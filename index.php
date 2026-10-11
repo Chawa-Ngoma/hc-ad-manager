@@ -113,7 +113,11 @@ $icon = [
 </header>
 
 <section class="tab" id="tab-ad" aria-labelledby="t-ad">
-<div class="cols">
+<div class="seg" role="group" aria-label="What to show">
+<button type="button" id="seg-edit" aria-pressed="true">Edit details</button>
+<button type="button" id="seg-see" aria-pressed="false">See the ad</button>
+</div>
+<div class="cols" id="ad-cols" data-view="edit">
 <form class="editor" id="ad-form" novalidate>
 <section class="panel">
 <h2>When and where</h2>
@@ -178,7 +182,7 @@ $icon = [
 </div>
 <p class="state" id="ad-state" role="status"></p>
 </form>
-<div class="previewcol"><div class="panel"><h2>Preview</h2><p class="muted">The ad preview will go here.</p></div></div>
+<div class="previewcol"><canvas id="flyer" class="flyer" width="1200" height="1800" role="img" aria-label="Preview of the flyer"></canvas></div>
 </div>
 </section>
 
@@ -202,6 +206,7 @@ $icon = [
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>window.APP = <?= json_encode(['csrf' => csrf(), 'ad' => get_ad()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+<script src="assets/flyer.js"></script>
 <script src="assets/app.js"></script>
 </body>
 <?php endif; ?>

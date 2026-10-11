@@ -5,14 +5,13 @@
   --field: #fffdfc; --err: #9b1c1c; --err-bg: #fdecec;
   --display: Georgia, 'Times New Roman', serif;
   --body: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  color-scheme: light;
+  color-scheme: light dark; /* native pickers and scrollbars follow the phone's light or dark setting */
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #181211; --surface: #231a19; --ink: #f7ece9; --muted: #b9a29d; --line: #3b2c2a;
     --accent: #ef7268; --accent-soft: #3b2421; --accent-text: #ef7268; --on-accent: #2a0f0c;
     --field: #1d1514; --err: #ffb4b4; --err-bg: #3a1a1a;
-    color-scheme: dark;
   }
 }
 
@@ -38,6 +37,8 @@ input[type=date], input[type=time], textarea, select {
   background: var(--field); border: 1.5px solid var(--line); border-radius: 12px; font-weight: 400;
 }
 input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+/* Date and time: native pickers in the app colour; no extra padding, so the 48px minimum height decides the height. */
+input[type=date], input[type=time] { accent-color: var(--accent); padding-block: 0; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 48px; padding: 0 20px; cursor: pointer;
@@ -113,9 +114,23 @@ textarea { resize: vertical; line-height: 1.45; }
 .row .btn { flex: 1 1 140px; }
 .btn:disabled { opacity: .5; cursor: default; }
 .state { color: var(--muted); font-size: .9rem; }
-.previewcol { display: none; }
+
+/* Flyer preview and the phone switch */
+.flyer {
+  display: block; width: 100%; max-width: 440px; height: auto; aspect-ratio: 2 / 3; margin-inline: auto;
+  background: #fbf3ee; border-radius: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
+}
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--accent-soft); border-radius: 14px; }
+.seg button { min-height: 44px; border: 0; border-radius: 11px; background: none; color: var(--muted); font-weight: 600; cursor: pointer; }
+.seg button[aria-pressed=true] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+#tab-ad:not([hidden]) { display: flex; flex-direction: column; gap: 18px; }
+@media (max-width: 899px) {
+  .cols[data-view=edit] .previewcol { display: none; }
+  .cols[data-view=see] .editor { display: none; }
+}
 
 @media (min-width: 900px) {
   .cols { grid-template-columns: 1fr 1fr; }
-  .previewcol { display: block; }
+  .seg { display: none; }
+  .previewcol { position: sticky; top: 16px; }
 }

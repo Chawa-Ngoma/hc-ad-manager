@@ -27,3 +27,5 @@ On the first visit the app asks you to choose a password (at least 8 characters)
 ## Editing the ad
 
 The Ad tab holds the venue, date, time, headline, description, items shown, contacts and payment line. Save changes stores the ad on the server and shows the cleaned version; Undo changes goes back to the last saved version. The first time the app runs it starts with neutral example text and today's date (Africa/Johannesburg).
+
+The flyer preview redraws as you type, without contacting the server. On a phone, "Edit details" and "See the ad" switch between the form and the flyer; from 900 px wide they sit side by side.

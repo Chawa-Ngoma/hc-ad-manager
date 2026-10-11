@@ -112,7 +112,33 @@
     stateEl.textContent = dirty ? 'You have changes that are not saved yet.' : 'Everything is saved.';
   }
 
-  form.addEventListener('input', function () { errorEl.hidden = true; refresh(); });
+  // Live preview: redraw from the form (unsaved edits included) on every change, with no server call.
+  var canvas = document.getElementById('flyer');
+  var drawQueued = false;
+  function redraw() {
+    if (drawQueued) return;
+    drawQueued = true;
+    requestAnimationFrame(function () {
+      drawQueued = false;
+      var ad = readForm();
+      window.drawFlyer(canvas, ad);
+      canvas.setAttribute('aria-label', 'Preview of the flyer: ' + ad.title + ', ' + ad.venue);
+    });
+  }
+
+  form.addEventListener('input', function () { errorEl.hidden = true; refresh(); redraw(); });
+  form.addEventListener('change', redraw);
+
+  // Phones: switch between the form and the flyer (from 900 px wide both show).
+  var cols = document.getElementById('ad-cols');
+  function showView(view) {
+    cols.dataset.view = view;
+    document.getElementById('seg-edit').setAttribute('aria-pressed', String(view === 'edit'));
+    document.getElementById('seg-see').setAttribute('aria-pressed', String(view === 'see'));
+    window.scrollTo(0, 0);
+  }
+  document.getElementById('seg-edit').addEventListener('click', function () { showView('edit'); });
+  document.getElementById('seg-see').addEventListener('click', function () { showView('see'); });
 
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -121,6 +147,7 @@
       var res = await api('save_ad', readForm());
       saved = res.ad;
       fillForm(saved);
+      redraw();
       errorEl.hidden = true;
       toast('Saved. The ad is up to date.');
     } catch (err) {
@@ -134,11 +161,13 @@
     fillForm(saved);
     errorEl.hidden = true;
     refresh();
+    redraw();
     toast('Changes undone.');
   });
 
   fillForm(saved);
   refresh();
+  redraw();
 
   window.api = api;
   window.toast = toast;
