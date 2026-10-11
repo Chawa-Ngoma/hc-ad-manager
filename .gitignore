@@ -1,0 +1,7 @@
+data/
+config.php
+.env
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
