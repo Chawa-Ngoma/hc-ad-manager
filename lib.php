@@ -173,3 +173,90 @@ function business_name(): string
 {
     return 'Ad Manager';
 }
+
+// Items the ad can show, in display order: key => label.
+const AD_ITEMS = [
+    'shoes' => 'Shoes',
+    'bags' => 'Handbags',
+    'jewel' => 'Jewellery',
+    'cloth' => 'Clothing',
+    'card' => 'Cardigans',
+    'blouse' => 'Blouses',
+];
+
+// Longest allowed length of each text field.
+const AD_LIMITS = [
+    'venue' => 80, 'title' => 80, 'partner' => 60, 'desc' => 260,
+    'c1n' => 30, 'c1p' => 30, 'c2n' => 30, 'c2p' => 30, 'c3n' => 30, 'c3p' => 30,
+    'pay' => 80,
+];
+
+// Key order here is the order of every cleaned ad.
+function ad_default(): array
+{
+    return [
+        'venue' => 'Your venue',
+        'date' => (new DateTime('now', new DateTimeZone('Africa/Johannesburg')))->format('Y-m-d'),
+        'time' => '09:00',
+        'title' => 'Your business name',
+        'partner' => '',
+        'desc' => 'Tell customers what you are showing.',
+        'items' => array_keys(AD_ITEMS),
+        'c1n' => 'Your name',
+        'c1p' => '000 000 0000',
+        'c2n' => '', 'c2p' => '',
+        'c3n' => '', 'c3p' => '',
+        'pay' => 'All major cards are accepted',
+    ];
+}
+
+// Collapses whitespace, trims and cuts to $max characters. Anything that is
+// not valid UTF-8 or not a string counts as empty.
+function clean_text($value, int $max): string
+{
+    if (!is_string($value)) {
+        return '';
+    }
+    $value = preg_replace('/[\s\p{Cc}]+/u', ' ', $value); // null when the text is not valid UTF-8
+    if ($value === null) {
+        return '';
+    }
+    preg_match('/^.{0,' . $max . '}/su', trim($value), $m);
+    return rtrim($m[0] ?? '');
+}
+
+// Never fails. Missing keys take the default; bad or empty required values fall back to it.
+function clean_ad(array $in): array
+{
+    $out = [];
+    foreach (ad_default() as $key => $default) {
+        $has = array_key_exists($key, $in);
+        if ($key === 'date') {
+            $v = $has ? clean_text($in[$key], 40) : '';
+            $ok = preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+            $out[$key] = $ok ? $v : $default;
+        } elseif ($key === 'time') {
+            $v = $has ? clean_text($in[$key], 40) : '';
+            $out[$key] = preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $v) ? $v : $default;
+        } elseif ($key === 'items') {
+            $chosen = !$has ? $default : (is_array($in[$key]) ? $in[$key] : []);
+            $out[$key] = array_values(array_filter(array_keys(AD_ITEMS), fn($k) => in_array($k, $chosen, true)));
+        } else {
+            $v = $has ? clean_text($in[$key], AD_LIMITS[$key]) : $default;
+            $out[$key] = ($v === '' && ($key === 'venue' || $key === 'title')) ? $default : $v;
+        }
+    }
+    return $out;
+}
+
+// The current ad. The first call stores the defaults so the seeded date stays fixed.
+function get_ad(): array
+{
+    $stored = kget('ad');
+    if (!is_array($stored)) {
+        $ad = clean_ad([]);
+        kset('ad', $ad);
+        return $ad;
+    }
+    return clean_ad($stored);
+}

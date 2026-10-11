@@ -68,6 +68,78 @@
     location.reload();
   });
 
+  // Ad editor: fill the form, track unsaved changes, save and undo.
+  var form = document.getElementById('ad-form');
+  var saveBtn = document.getElementById('ad-save');
+  var undoBtn = document.getElementById('ad-undo');
+  var stateEl = document.getElementById('ad-state');
+  var errorEl = document.getElementById('ad-error');
+  var itemBoxes = Array.prototype.slice.call(form.querySelectorAll('input[name="items[]"]'));
+  var itemOrder = itemBoxes.map(function (b) { return b.value; });
+  var keys = Object.keys(window.APP.ad); // the server's fixed key order
+  var saved = window.APP.ad;
+
+  // Same key order and item order every time, so two equal ads give equal JSON.
+  function normalise(ad) {
+    var out = {};
+    keys.forEach(function (k) {
+      out[k] = k === 'items'
+        ? itemOrder.filter(function (i) { return ad.items.indexOf(i) !== -1; })
+        : String(ad[k]);
+    });
+    return JSON.stringify(out);
+  }
+
+  function readForm() {
+    var ad = {};
+    keys.forEach(function (k) { if (k !== 'items') ad[k] = form.elements[k].value; });
+    // Always an array, even when nothing is ticked.
+    ad.items = itemBoxes.filter(function (b) { return b.checked; }).map(function (b) { return b.value; });
+    return ad;
+  }
+
+  function fillForm(ad) {
+    keys.forEach(function (k) { if (k !== 'items') form.elements[k].value = ad[k]; });
+    itemBoxes.forEach(function (b) { b.checked = ad.items.indexOf(b.value) !== -1; });
+  }
+
+  function isDirty() { return normalise(readForm()) !== normalise(saved); }
+
+  function refresh() {
+    var dirty = isDirty();
+    saveBtn.disabled = !dirty;
+    undoBtn.disabled = !dirty;
+    stateEl.textContent = dirty ? 'You have changes that are not saved yet.' : 'Everything is saved.';
+  }
+
+  form.addEventListener('input', function () { errorEl.hidden = true; refresh(); });
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    saveBtn.disabled = true;
+    try {
+      var res = await api('save_ad', readForm());
+      saved = res.ad;
+      fillForm(saved);
+      errorEl.hidden = true;
+      toast('Saved. The ad is up to date.');
+    } catch (err) {
+      errorEl.textContent = err.message; // stays until she edits a field or saves again
+      errorEl.hidden = false;
+    }
+    refresh();
+  });
+
+  undoBtn.addEventListener('click', function () {
+    fillForm(saved);
+    errorEl.hidden = true;
+    refresh();
+    toast('Changes undone.');
+  });
+
+  fillForm(saved);
+  refresh();
+
   window.api = api;
   window.toast = toast;
 })();

@@ -23,3 +23,7 @@ Setup and deployment instructions will be added here.
 ## Signing in
 
 On the first visit the app asks you to choose a password (at least 8 characters). After that it asks for that password. Five wrong tries in a row lock sign-in for 60 seconds. A sign-in lasts 30 days on that device. Only a hash of the password is stored.
+
+## Editing the ad
+
+The Ad tab holds the venue, date, time, headline, description, items shown, contacts and payment line. Save changes stores the ad on the server and shows the cleaned version; Undo changes goes back to the last saved version. The first time the app runs it starts with neutral example text and today's date (Africa/Johannesburg).

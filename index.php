@@ -114,8 +114,71 @@ $icon = [
 
 <section class="tab" id="tab-ad" aria-labelledby="t-ad">
 <div class="cols">
-<div class="panel"><h2>Ad</h2><p class="muted">The ad details will go here.</p></div>
-<div class="panel"><h2>Preview</h2><p class="muted">The ad preview will go here.</p></div>
+<form class="editor" id="ad-form" novalidate>
+<section class="panel">
+<h2>When and where</h2>
+<label class="field">Venue
+<input type="text" name="venue" maxlength="80" placeholder="Where is it happening?" autocomplete="off">
+</label>
+<div class="pair">
+<label class="field">Date
+<input type="date" name="date">
+</label>
+<label class="field">Time
+<input type="time" name="time">
+</label>
+</div>
+</section>
+
+<section class="panel">
+<h2>What we're selling</h2>
+<label class="field">Headline
+<input type="text" name="title" maxlength="80" placeholder="Your business name" autocomplete="off">
+</label>
+<label class="field">Also showing with (optional)
+<input type="text" name="partner" maxlength="60" placeholder="Another business joining you" autocomplete="off">
+</label>
+<label class="field">Short description (optional)
+<textarea name="desc" rows="3" maxlength="260" placeholder="Tell customers what you are showing."></textarea>
+</label>
+<fieldset class="field">
+<legend>Items shown</legend>
+<div class="pills">
+<?php foreach (AD_ITEMS as $key => $label): ?>
+<label class="pill"><input type="checkbox" name="items[]" value="<?= h($key) ?>"><span><?= h($label) ?></span></label>
+<?php endforeach; ?>
+</div>
+</fieldset>
+</section>
+
+<section class="panel">
+<h2>Contact</h2>
+<?php foreach ([1, 2, 3] as $n): ?>
+<fieldset class="field">
+<legend>Contact <?= $n ?> (optional)</legend>
+<div class="pair">
+<label class="field">Name
+<input type="text" name="c<?= $n ?>n" maxlength="30" placeholder="Their name" autocomplete="off">
+</label>
+<label class="field">Phone
+<input type="tel" name="c<?= $n ?>p" maxlength="30" placeholder="Phone number" autocomplete="off">
+</label>
+</div>
+</fieldset>
+<?php endforeach; ?>
+<label class="field">Payment line (optional)
+<input type="text" name="pay" maxlength="80" placeholder="How customers can pay" autocomplete="off">
+</label>
+</section>
+
+<div class="notice" id="ad-error" role="alert" hidden></div>
+<div class="row">
+<button type="submit" class="btn primary" id="ad-save">Save changes</button>
+<button type="button" class="btn" id="ad-undo">Undo changes</button>
+</div>
+<p class="state" id="ad-state" role="status"></p>
+</form>
+<div class="previewcol"><div class="panel"><h2>Preview</h2><p class="muted">The ad preview will go here.</p></div></div>
 </div>
 </section>
 
@@ -138,7 +201,7 @@ $icon = [
 </nav>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-<script>window.APP = <?= json_encode(['csrf' => csrf()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+<script>window.APP = <?= json_encode(['csrf' => csrf(), 'ad' => get_ad()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
 <script src="assets/app.js"></script>
 </body>
 <?php endif; ?>
