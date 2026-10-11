@@ -7,7 +7,7 @@ boot();
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Health &amp; Comfort Ad Manager</title>
+<title>Ad Manager</title>
 </head>
 <body>
 <p>OK</p>
