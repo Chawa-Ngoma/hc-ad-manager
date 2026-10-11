@@ -56,6 +56,42 @@ function boot(): void
     header('Referrer-Policy: same-origin');
 }
 
+function authed(): bool
+{
+    return !empty($_SESSION['authed']);
+}
+
+function csrf(): string
+{
+    if (empty($_SESSION['csrf'])) {
+        $_SESSION['csrf'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf'];
+}
+
+function csrf_ok($token): bool
+{
+    return is_string($token) && hash_equals(csrf(), $token);
+}
+
+// Marks the session as signed in, with a fresh session id and CSRF token.
+function sign_in(): void
+{
+    session_regenerate_id(true);
+    $_SESSION['authed'] = true;
+    $_SESSION['csrf'] = bin2hex(random_bytes(32));
+}
+
+function require_api_auth(): void
+{
+    if (!authed()) {
+        json_out(['error' => 'Please sign in again.'], 401);
+    }
+    if (!csrf_ok($_SERVER['HTTP_X_CSRF'] ?? '')) {
+        json_out(['error' => 'Your page has expired. Please reload it and try again.'], 403);
+    }
+}
+
 function h($s): string
 {
     return htmlspecialchars((string) $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');

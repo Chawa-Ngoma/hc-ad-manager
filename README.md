@@ -19,3 +19,7 @@ Open http://127.0.0.1:8000/. The first request creates the `data/` folder, `data
 - On Linux, `data/secret.key` must have permission 600: `ls -l data/secret.key` should show `-rw-------`.
 
 Setup and deployment instructions will be added here.
+
+## Signing in
+
+On the first visit the app asks you to choose a password (at least 8 characters). After that it asks for that password. Five wrong tries in a row lock sign-in for 60 seconds. A sign-in lasts 30 days on that device. Only a hash of the password is stored.
