@@ -60,51 +60,86 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !authed()) {
 }
 
 $setup = kget('pass_hash') === null;
+
+$title = business_name();
+$icon = [
+    'ad' => '<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/>',
+    'send' => '<path d="M3 11l18-8-7 18-3-7z"/>',
+    'settings' => '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
 <meta name="csrf" content="<?= h(csrf()) ?>">
-<title>Ad Manager</title>
-<style>
-:root { color-scheme: light dark; --bg: #f4f4f6; --card: #fff; --text: #1c1c1e; --line: #c9c9d1; --accent: #1a56c4; --err-bg: #fdecec; --err: #9b1c1c; }
-@media (prefers-color-scheme: dark) { :root { --bg: #121214; --card: #1e1e22; --text: #f0f0f3; --line: #44444c; --accent: #6ea0ff; --err-bg: #3a1a1a; --err: #ffb4b4; } }
-* { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, sans-serif; }
-.card { width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
-h1 { margin: 0 0 4px; font-size: 22px; }
-h2 { margin: 0 0 16px; font-size: 18px; font-weight: 600; }
-.notice { border: 1px solid var(--err); background: var(--err-bg); color: var(--err); border-radius: 8px; padding: 10px 12px; margin-bottom: 16px; }
-label { display: block; margin-bottom: 12px; font-weight: 600; }
-input[type=password] { display: block; width: 100%; margin-top: 4px; padding: 12px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
-button { width: 100%; padding: 12px; font: inherit; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 8px; cursor: pointer; }
-</style>
+<meta name="theme-color" content="#c4483f">
+<title><?= h($title) ?></title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="assets/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
+<link rel="stylesheet" href="assets/app.css">
 </head>
-<body>
+<?php if (!authed()): ?>
+<body class="auth">
 <main class="card">
-<h1>Ad Manager</h1>
-<?php if (authed()): ?>
-<p>You are signed in.</p>
-<?php else: ?>
+<h1><?= h($title) ?></h1>
 <h2><?= $setup ? 'Choose a password' : 'Sign in' ?></h2>
 <?php if ($error !== ''): ?>
 <div class="notice" role="alert"><?= h($error) ?></div>
 <?php endif; ?>
 <form method="post" action="index.php">
 <input type="hidden" name="csrf" value="<?= h(csrf()) ?>">
-<label>Password
+<label class="field">Password
 <input type="password" name="password" autocomplete="<?= $setup ? 'new-password' : 'current-password' ?>" required autofocus>
 </label>
 <?php if ($setup): ?>
-<label>Type the password again
+<label class="field">Type the password again
 <input type="password" name="password2" autocomplete="new-password" required>
 </label>
 <?php endif; ?>
-<button type="submit"><?= $setup ? 'Save password and continue' : 'Sign in' ?></button>
+<button type="submit" class="btn primary block"><?= $setup ? 'Save password and continue' : 'Sign in' ?></button>
 </form>
-<?php endif; ?>
 </main>
 </body>
+<?php else: ?>
+<body>
+<div class="app">
+<header class="top">
+<div class="brand"><?= h($title) ?></div>
+<button type="button" class="btn" id="signout">Sign out</button>
+</header>
+
+<section class="tab" id="tab-ad" aria-labelledby="t-ad">
+<div class="cols">
+<div class="panel"><h2>Ad</h2><p class="muted">The ad details will go here.</p></div>
+<div class="panel"><h2>Preview</h2><p class="muted">The ad preview will go here.</p></div>
+</div>
+</section>
+
+<section class="tab" id="tab-send" aria-labelledby="t-send" hidden>
+<div class="cols">
+<div class="panel"><h2>Send</h2><p class="muted">The email form will go here.</p></div>
+<div class="panel"><h2>Email preview</h2><p class="muted">The email preview will go here.</p></div>
+</div>
+</section>
+
+<section class="tab" id="tab-settings" aria-labelledby="t-settings" hidden>
+<div class="panel"><h2>Settings</h2><p class="muted">The settings will go here.</p></div>
+</section>
+</div>
+
+<nav class="tabbar" role="tablist" aria-label="Sections">
+<?php foreach (['ad' => 'Ad', 'send' => 'Send', 'settings' => 'Settings'] as $key => $label): ?>
+<button type="button" role="tab" id="t-<?= $key ?>" data-tab="<?= $key ?>" aria-selected="<?= $key === 'ad' ? 'true' : 'false' ?>"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><?= $icon[$key] ?></svg><?= h($label) ?></button>
+<?php endforeach; ?>
+</nav>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>window.APP = <?= json_encode(['csrf' => csrf()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+<script src="assets/app.js"></script>
+</body>
+<?php endif; ?>
 </html>

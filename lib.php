@@ -167,3 +167,9 @@ function dec(string $blob): string
     $plain = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', secret(), OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16));
     return $plain === false ? '' : $plain;
 }
+
+// The name shown in the header and on the sign-in card. Settings will supply it later.
+function business_name(): string
+{
+    return 'Ad Manager';
+}
