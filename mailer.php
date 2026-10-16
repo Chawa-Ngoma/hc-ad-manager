@@ -61,7 +61,7 @@ function mail_send_one(PHPMailer $m, array $s, string $to, string $subject, stri
         $m->addReplyTo($s['replyTo'], $s['senderName']);
     }
     $m->addAddress($to);
-    $m->Subject = $subject;
+    $m->Subject = clean_text($subject, 300); // one line, no control characters, room for a long venue
     $m->isHTML(true);
     $m->Body = $html;
     $m->AltBody = $text;

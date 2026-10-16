@@ -96,6 +96,15 @@ switch ($_POST['action'] ?? '') {
             json_out(['error' => 'Something went wrong while sending. Please try again.'], 500);
         }
         json_out(['ok' => true]);
+    case 'preview':
+        // Only the ad, the message and the two switches arrive here: never any recipient address.
+        $in = json_decode((string) ($_POST['data'] ?? ''), true);
+        if (!is_array($in) || !is_array($in['ad'] ?? null)) {
+            json_out(['error' => 'The preview could not be made. Please try again.'], 422);
+        }
+        require_once __DIR__ . '/email.php';
+        $msg = is_string($in['msg'] ?? '') ? ($in['msg'] ?? '') : '';
+        json_out(['html' => email_html(clean_ad($in['ad']), business_name(), $msg, ($in['details'] ?? true) !== false, ($in['image'] ?? true) !== false)]);
     default:
         json_out(['error' => 'Unknown action.'], 400);
 }

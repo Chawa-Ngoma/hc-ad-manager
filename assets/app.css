@@ -27,6 +27,7 @@ h1, h2 { font-family: var(--display); line-height: 1.15; margin: 0; }
 h1 { font-size: 1.5rem; }
 h2 { font-size: 1.3rem; }
 p { margin: 0; }
+[hidden] { display: none !important; } /* so a class that sets display never keeps a hidden element on screen */
 .muted { color: var(--muted); }
 
 /* Controls */
@@ -125,7 +126,7 @@ textarea { resize: vertical; line-height: 1.45; }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--accent-soft); border-radius: 14px; }
 .seg button { min-height: 44px; border: 0; border-radius: 11px; background: none; color: var(--muted); font-weight: 600; cursor: pointer; }
 .seg button[aria-pressed=true] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
-#tab-ad:not([hidden]) { display: flex; flex-direction: column; gap: 18px; }
+#tab-ad:not([hidden]), #tab-send:not([hidden]) { display: flex; flex-direction: column; gap: 18px; }
 @media (max-width: 899px) {
   .cols[data-view=edit] .previewcol { display: none; }
   .cols[data-view=see] .editor { display: none; }
@@ -146,3 +147,19 @@ textarea { resize: vertical; line-height: 1.45; }
 .result { padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--field); }
 .result.ok::before { content: "\2713\00a0"; color: var(--accent-text); font-weight: 700; }
 .result.err { border-color: var(--err); background: var(--err-bg); color: var(--err); }
+
+/* Send tab */
+.needs { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 16px; background: var(--accent-soft); border-radius: 14px; }
+.fromline { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 14px; overflow-wrap: anywhere; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: -6px 0 6px; }
+.chips:empty { display: none; }
+.chip { padding: 5px 10px; border-radius: 99px; background: var(--accent-soft); font-size: .85rem; overflow-wrap: anywhere; }
+.chip.invalid { background: none; border: 1.5px dashed var(--err); color: var(--err); }
+.chip.dup { background: none; border: 1.5px dashed var(--muted); color: var(--muted); }
+.count { margin: 0 0 14px; color: var(--muted); font-size: .9rem; }
+.count.over { color: var(--err); font-weight: 600; }
+.sendcol { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.mailframe { display: block; width: 100%; height: 480px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color-scheme: light; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; overflow-wrap: anywhere; }

@@ -49,6 +49,7 @@
       document.querySelector('meta[name=csrf]').setAttribute('content', res.csrf);
       window.APP.settings = res.settings;
       fill(res.settings);
+      document.dispatchEvent(new Event('settings-saved')); // the Send tab follows the settings
       errorEl.hidden = true;
       return true;
     } catch (err) {

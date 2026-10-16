@@ -123,6 +123,7 @@
       var ad = readForm();
       window.drawFlyer(canvas, ad);
       canvas.setAttribute('aria-label', 'Preview of the flyer: ' + ad.title + ', ' + ad.venue);
+      document.dispatchEvent(new CustomEvent('flyer-changed', { detail: ad })); // the Send tab follows the ad
     });
   }
 

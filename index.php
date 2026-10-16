@@ -187,9 +187,55 @@ $icon = [
 </section>
 
 <section class="tab" id="tab-send" aria-labelledby="t-send" hidden>
+<div class="needs" id="send-notice" role="status" hidden>
+<p id="send-notice-text"></p>
+<button type="button" class="btn" id="go-settings">Go to Settings</button>
+</div>
 <div class="cols">
-<div class="panel"><h2>Send</h2><p class="muted">The email form will go here.</p></div>
-<div class="panel"><h2>Email preview</h2><p class="muted">The email preview will go here.</p></div>
+<div class="editor">
+<div class="panel">
+<h2>Send to customers</h2>
+<div class="fromline"><span class="hint">From</span> <strong id="send-from"></strong></div>
+<label class="field">To
+<textarea id="send-to" rows="4" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Paste or type email addresses, separated by commas, spaces or new lines"></textarea>
+</label>
+<div class="chips" id="send-chips"></div>
+<p class="count" id="send-count" role="status"></p>
+<label class="field">CC <span class="hint">Optional. Use this to get a copy yourself.</span>
+<input type="text" id="send-cc" inputmode="email" maxlength="254" autocomplete="off" autocapitalize="none" spellcheck="false">
+</label>
+<label class="field">Subject
+<input type="text" id="send-subject" maxlength="300" autocomplete="off">
+</label>
+<label class="field">Message
+<textarea id="send-message" rows="7" maxlength="5000"></textarea>
+</label>
+<label class="check"><input type="checkbox" id="send-details" checked><span>Show venue, time and date in the email</span></label>
+<label class="check"><input type="checkbox" id="send-image" checked><span>Attach the flyer picture</span></label>
+</div>
+</div>
+<div class="sendcol">
+<h2>What customers will see</h2>
+<iframe id="send-preview" class="mailframe" title="What customers will see" sandbox="allow-same-origin"></iframe>
+<p class="hint" id="send-preview-note" role="alert" hidden></p>
+<button type="button" class="btn primary block" id="send-review">Review and send</button>
+<p class="hint" id="send-hint" role="status" hidden></p>
+<div class="panel" id="send-summary" hidden>
+<h2>Ready to send?</h2>
+<dl class="kv">
+<dt>From</dt><dd id="sum-from"></dd>
+<dt>To</dt><dd id="sum-count"></dd>
+<dt>CC</dt><dd id="sum-cc"></dd>
+<dt>Subject</dt><dd id="sum-subject"></dd>
+<dt>Picture</dt><dd id="sum-image"></dd>
+</dl>
+<div class="row">
+<button type="button" class="btn" id="send-back">Go back</button>
+<button type="button" class="btn primary" id="send-now" disabled>Send now</button>
+</div>
+<p class="hint">Sending is not switched on yet.</p>
+</div>
+</div>
 </div>
 </section>
 
@@ -271,6 +317,7 @@ $icon = [
 <script src="assets/flyer.js"></script>
 <script src="assets/app.js"></script>
 <script src="assets/settings.js"></script>
+<script src="assets/send.js"></script>
 </body>
 <?php endif; ?>
 </html>

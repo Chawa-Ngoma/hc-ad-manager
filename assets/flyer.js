@@ -154,6 +154,7 @@
     if (dt.getFullYear() !== y || dt.getMonth() !== mo - 1 || dt.getDate() !== d) return null;
     return {
       long: WEEKDAYS[dt.getDay()] + ' ' + d + ' ' + MONTHS[mo - 1] + ' ' + y,
+      short: WEEKDAYS[dt.getDay()] + ' ' + d + ' ' + MONTHS[mo - 1],
       kick: d + ' ' + MONTHS[mo - 1].toUpperCase()
     };
   }
@@ -341,4 +342,6 @@
   }
 
   window.drawFlyer = drawFlyer;
+  // "Wednesday 30 September" for an ISO date, from the same fixed English names; '' when it is not a date.
+  window.flyerDate = function (iso) { var d = parseDate(iso); return d ? d.short : ''; };
 })();
