@@ -58,6 +58,13 @@ function email_contacts(array $ad): array
     return $out;
 }
 
+// The optional second footer line, from APP_CREDIT in config.php. One line of at most 100 characters: control
+// characters and line breaks are gone. The HTML escapes it; the text part shows it as typed. '' when not set.
+function email_credit(): string
+{
+    return defined('APP_CREDIT') ? clean_text((string) APP_CREDIT, 100) : '';
+}
+
 // $ad must come from clean_ad(). Table layout, 600 px wide, inline styles only, light colours in every mail app.
 function email_html(array $ad, string $businessName, string $message, bool $showDetails, bool $hasImage): string
 {
@@ -103,7 +110,8 @@ function email_html(array $ad, string $businessName, string $message, bool $show
         . '<div style="font-family:Georgia,\'Times New Roman\',serif;font-size:24px;line-height:1.2;font-weight:bold;color:#ffffff;overflow-wrap:anywhere">' . h($businessName) . '</div>'
         . '<div style="font-size:15px;color:#fbe3df;padding-top:4px;overflow-wrap:anywhere">' . h($ad['title']) . '</div></td></tr>'
         . '<tr><td style="padding:24px;color:#2b1d1d">' . $body . '</td></tr>'
-        . '<tr><td style="padding:14px 24px;border-top:1px solid #efe1dc;font-size:12px;color:#8a7772">Sent by ' . h($businessName) . '</td></tr>'
+        . '<tr><td style="padding:14px 24px;border-top:1px solid #efe1dc;font-size:12px;color:#8a7772">Sent by ' . h($businessName)
+        . (email_credit() !== '' ? '<br>' . h(email_credit()) : '') . '</td></tr>'
         . '</table></td></tr></table></body></html>';
 }
 
@@ -133,6 +141,9 @@ function email_text(array $ad, string $businessName, string $message, bool $show
         array_push($out, 'The flyer is attached to this email as a picture.', '');
     }
     $out[] = 'Sent by ' . $one($businessName);
+    if (email_credit() !== '') {
+        $out[] = email_credit();
+    }
     return implode("\n", $out) . "\n";
 }
 

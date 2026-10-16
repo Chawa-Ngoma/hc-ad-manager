@@ -33,7 +33,7 @@
     }
 
     if (res.status === 401) {
-      if (!stay) location.reload(); // a send in progress stays on screen instead, so its numbers are not lost
+      if (!stay) location.replace('./'); // a send in progress stays on screen instead, so its numbers are not lost
       var signedOut = new Error('Please sign in again.');
       signedOut.status = 401;
       throw signedOut;
@@ -74,7 +74,7 @@
       toast(e.message);
       return;
     }
-    location.reload();
+    location.replace('./');
   });
 
   // Ad editor: fill the form, track unsaved changes, save and undo.

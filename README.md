@@ -87,6 +87,20 @@ You only need File Manager. Settings, the saved ad and the sent log are kept.
 
 To cancel, delete `reset-password.txt` from `data`. A file older than 60 minutes (or dated in the future) is ignored and removed, so just create it again. While the file exists anyone who opens the sign-in page can choose the password, so do steps 2 and 3 together and straight away. As a last resort, deleting `data/app.sqlite` also lets you choose a new password, but it erases the settings, the ad and the sent log. *Names may differ slightly on other hosts.*
 
+## Optional settings (`config.php`)
+
+`config.php` is optional and is never committed (it is in `.gitignore`). Create it next to `index.php` with a `<?php` line and any of these:
+
+```php
+<?php
+define('APP_URL', 'https://ads.example.com/');   // the full https:// address of the app
+define('APP_CREDIT', 'Made by Example Studio');    // a second line in the footer of every email
+define('APP_DATA_DIR', '/home/youruser/ad-manager-data'); // see "Check that the protected files are protected"
+```
+
+- `APP_URL`: write the full `https://` address, for example `https://ads.example.com/`. It lets a chat app show the app's icon beside the link text. Without it the link preview shows text only.
+- `APP_CREDIT`: plain text, shown under "Sent by ..." in the email footer, in the preview and in the sent email alike. Markup is shown as typed, line breaks and control characters are removed, and anything past about 100 characters is cut off. Leave it out and no extra line appears.
+
 ## Other checks
 
 - If the site is not on HTTPS (and the address is not localhost), a red notice on the sign-in card and at the top of the app says so. Turn HTTPS on and it goes away.

@@ -276,7 +276,7 @@
 
   $('send-now').addEventListener('click', startSend);
   $('send-retry').addEventListener('click', function () { runChunks(); });
-  $('send-signin').addEventListener('click', function () { location.reload(); });
+  $('send-signin').addEventListener('click', function () { location.replace('./'); });
   $('send-stop').addEventListener('click', function () { sending = false; job = null; lock(false); showPanel(''); });
   $('send-again').addEventListener('click', function () { job = null; to.value = ''; checkAddresses(); hint.hidden = true; showPanel(''); });
 

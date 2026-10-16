@@ -94,11 +94,24 @@ function handle_post(): string
     return 'That password is not right.';
 }
 
+// The app is always reached as "./" (the folder), so index.php stays out of the address bar. A folder opened without its
+// closing slash (Apache already adds it; the built-in PHP server does not) would make "./" mean the folder above,
+// so such a visit is sent to the same address with the slash. /index.php itself still works.
+$uri = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+if (in_array($_SERVER['REQUEST_METHOD'], ['GET', 'HEAD'], true) && !str_ends_with($uri, '/') && !str_ends_with($uri, '.php')) {
+    // Only the last part of the path is used, as a relative address ("./name/"): it can never name another host,
+    // whatever the request line or the Host header says, and the "./" keeps a name such as "a:b" from reading as a scheme.
+    $last = substr($uri, (int) strrpos($uri, '/') + 1);
+    $query = (string) ($_SERVER['QUERY_STRING'] ?? '');
+    header('Location: ./' . $last . '/' . ($query === '' ? '' : '?' . $query), true, 301);
+    exit;
+}
+
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !authed()) {
     $error = handle_post();
     if ($error === '') {
-        header('Location: index.php');
+        header('Location: ./');
         exit;
     }
 }
@@ -111,6 +124,10 @@ $plain = (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') && !in_array(
 $plainNote = 'This page is not using HTTPS, so your password and emails are not protected on their way. Ask whoever looks after the server to turn HTTPS on.';
 
 $title = 'Ad Manager'; // the sign-in card and the page title never read the settings
+$blurb = 'Edit your flyer and email it to your customers.'; // the text a chat app shows under a pasted link
+// The preview picture needs a full address, so it appears only when config.php sets APP_URL (http:// or https://).
+$shareImage = defined('APP_URL') && preg_match('~^https?://[^\s<>"\']+$~i', (string) APP_URL)
+    ? rtrim((string) APP_URL, '/') . '/assets/icon-512.png' : '';
 $icon = [
     'ad' => '<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/>',
     'send' => '<path d="M3 11l18-8-7 18-3-7z"/>',
@@ -126,6 +143,17 @@ $icon = [
 <meta name="csrf" content="<?= h(csrf()) ?>">
 <meta name="theme-color" content="#c4483f">
 <title><?= h($title) ?></title>
+<meta name="description" content="<?= h($blurb) ?>">
+<meta property="og:type" content="website">
+<meta property="og:title" content="<?= h($title) ?>">
+<meta property="og:description" content="<?= h($blurb) ?>">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="<?= h($title) ?>">
+<meta name="twitter:description" content="<?= h($blurb) ?>">
+<?php if ($shareImage !== ''): ?>
+<meta property="og:image" content="<?= h($shareImage) ?>">
+<meta name="twitter:image" content="<?= h($shareImage) ?>">
+<?php endif; ?>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
@@ -145,7 +173,7 @@ $icon = [
 <?php if ($plain): ?>
 <div class="notice" id="https-note"><?= h($plainNote) ?></div>
 <?php endif; ?>
-<form method="post" action="index.php">
+<form method="post" action="./">
 <input type="hidden" name="csrf" value="<?= h(csrf()) ?>">
 <label class="field">Password
 <input type="password" name="password" autocomplete="<?= $setup ? 'new-password' : 'current-password' ?>" required autofocus>
