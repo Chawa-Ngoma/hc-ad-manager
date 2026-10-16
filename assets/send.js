@@ -209,6 +209,7 @@
       $('send-cc-note').textContent = copy.skipped ? 'No copy was sent to you because no customer email was accepted.'
         : copy.ok ? 'Your copy was sent.' : 'Your copy could not be sent: ' + copy.err + ' This did not affect your customers.';
     }
+    if (r.log) renderLog(r.log); // the card follows the send, no reload needed
     showPanel('result');
   }
 
@@ -271,6 +272,34 @@
   $('send-stop').addEventListener('click', function () { sending = false; job = null; lock(false); showPanel(''); });
   $('send-again').addEventListener('click', function () { job = null; to.value = ''; checkAddresses(); hint.hidden = true; showPanel(''); });
 
+  // ---- recent sends: the card at the bottom of the tab (text only, never HTML)
+  function when(at) { // "2026-09-30 09:30" -> "Wednesday 30 September 2026, 09:30 AM"
+    var m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})$/.exec(at);
+    return m ? window.flyerDate(m[1], true) + ', ' + window.flyerTime(m[2]) : at;
+  }
+
+  function renderLog(rows) {
+    var list = $('send-log-list');
+    list.textContent = '';
+    rows.forEach(function (row) {
+      var li = document.createElement('li'), line;
+      [[row.subject, 'strong', ''], [when(row.at), 'span', 'hint'], [row.sent + ' of ' + row.total + ' sent', 'span', '']].forEach(function (part) {
+        line = document.createElement(part[1]);
+        line.className = part[2];
+        line.textContent = part[0];
+        li.appendChild(line);
+      });
+      if (row.failed > 0) {
+        line = document.createElement('span');
+        line.className = 'warn';
+        line.textContent = row.failed + ' did not go through or could not be confirmed';
+        li.appendChild(line);
+      }
+      list.appendChild(li);
+    });
+    $('send-log-empty').hidden = rows.length > 0;
+  }
+
   // ---- wiring
   to.addEventListener('input', function () { checkAddresses(); hint.hidden = true; closeSummary(); });
   cc.addEventListener('input', function () { ccTouched = true; hint.hidden = true; closeSummary(); });
@@ -309,4 +338,5 @@
   showSettings();
   autoSubject();
   checkAddresses();
+  renderLog(window.APP.log || []);
 })();

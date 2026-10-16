@@ -12,6 +12,7 @@ const SEND_CHUNK = 8;            // recipients per request
 const SEND_BUDGET = 15;          // seconds; after this a chunk starts no new recipient, saves, and answers done:false
 const SEND_STEP_TIMEOUT = 10;    // seconds allowed for connecting
 const SEND_REPLY_WAIT = 4;       // seconds to wait for each reply of the mail server (twice that after the message body, plus one more for the RSET that follows a failure: 12 in all)
+const SEND_COPY_BY = 8;          // the "Your copy" message is only started in the first 8 seconds of a request (it may need up to 22 more)
 const SEND_HUNG = 9;             // a recipient that failed after waiting this long is "unconfirmed" and stops the chunk
 const SEND_SLOW = 12;            // a recipient that took longer than this ends the chunk, even when it went out
 const SEND_PAUSE_US = 150000;    // pause between messages
@@ -93,6 +94,7 @@ function send_read_png(?array $file): array
 function send_prepare(array $in, ?array $file): array
 {
     send_purge();
+    db()->prepare("DELETE FROM kv WHERE k LIKE 'sent\\_%' ESCAPE '\\' AND CAST(v AS INTEGER) < ?")->execute([time() - 2 * SEND_KEEP]);
     $s = get_settings();
     if (!smtp_ready($s)) {
         return [422, ['error' => 'Please fill in your email settings first.']];
@@ -214,6 +216,35 @@ function send_copy(string $id, array &$state, array $s, ?string $png): ?array
     }
 }
 
+// Writes the one row of the sent log for a finished send: when, the subject that was sent, how many customers,
+// how many were accepted, and how many were not (failed or unconfirmed). Counts only; the CC copy is not counted
+// and no address is stored. The marker in kv and the row go in together in one transaction, so a request that
+// is repeated after a crash finds the marker and does not log the send a second time.
+function send_log(string $id, array $state): void
+{
+    $pdo = db();
+    $pdo->exec('PRAGMA busy_timeout = 5000');
+    $pdo->exec('BEGIN IMMEDIATE'); // take the write lock now: nothing can slip in between the check and the inserts
+    try {
+        $seen = $pdo->prepare('SELECT COUNT(*) FROM kv WHERE k = ?');
+        $seen->execute(['sent_' . $id]);
+        if ((int) $seen->fetchColumn() === 0) {
+            $pdo->prepare('INSERT INTO kv (k, v) VALUES (?, ?)')->execute(['sent_' . $id, json_encode(time())]);
+            $pdo->prepare('INSERT INTO sends (at, subject, total, sent, failed) VALUES (?, ?, ?, ?, ?)')->execute([
+                (new DateTime('now', new DateTimeZone('Africa/Johannesburg')))->format('Y-m-d H:i'),
+                $state['subject'],
+                count($state['to']),
+                $state['sent'],
+                count($state['failed']) + count($state['unconfirmed']),
+            ]);
+        }
+        $pdo->exec('COMMIT');
+    } catch (Throwable $e) {
+        $pdo->exec('ROLLBACK');
+        throw $e;
+    }
+}
+
 function send_chunk(string $id): array
 {
     ignore_user_abort(true); // a request the browser gave up on still finishes and saves its progress
@@ -278,6 +309,9 @@ function send_run(string $id, float $start): array
             if ($m === null) { // cannot connect or sign in: nothing moves
                 return [502, ['error' => $why] + send_view($state)];
             }
+            if (microtime(true) - $start >= SEND_BUDGET) {
+                break; // connecting took the time that was left: start no one on this connection, the page calls again
+            }
         }
         $i = $state['next'];
         $to = $state['to'][$i];
@@ -321,16 +355,28 @@ function send_run(string $id, float $start): array
         }
     }
     if ($m !== null && $m->getSMTPInstance()->connected()) {
-        $m->smtpClose();
+        if (microtime(true) - $start >= SEND_BUDGET) {
+            $m->getSMTPInstance()->close(); // out of time: no QUIT to wait for
+        } else {
+            $m->smtpClose();
+        }
     }
 
-    // Not everyone is done yet, or this request has used up its time: the page calls again.
-    if ($state['next'] < $total || microtime(true) - $start >= SEND_BUDGET) {
+    // Everyone has been handled: the row goes in now, in this request, before anything can be deferred, so a tab
+    // closed after the last customer cannot leave a send with no row. Repeating this is harmless (see send_log).
+    if ($state['next'] >= $total) {
+        send_log($id, $state);
+    }
+
+    // Not everyone is done yet, this request has used up its time, or there is a copy to send and too little time
+    // left to wait for a slow mail server: the page calls again.
+    $copyDue = $state['cc'] && $state['sent'] > 0 && $state['cc_state'] === null;
+    if ($state['next'] < $total || microtime(true) - $start >= SEND_BUDGET || ($copyDue && microtime(true) - $start >= SEND_COPY_BY)) {
         return [200, ['done' => false] + send_view($state)];
     }
 
     $copy = send_copy($id, $state, $s, $png);
-    $body = ['done' => true] + send_view($state) + ['cc' => $copy];
+    $body = ['done' => true] + send_view($state) + ['cc' => $copy, 'log' => recent_sends()];
     send_clear($id);
     return [200, $body];
 }

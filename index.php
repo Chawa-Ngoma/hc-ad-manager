@@ -259,6 +259,11 @@ $icon = [
 </div>
 </div>
 </div>
+<div class="panel" id="send-log">
+<h2>Recent sends</h2>
+<p class="muted" id="send-log-empty">Nothing has been sent yet.</p>
+<ul class="sendlog" id="send-log-list"></ul>
+</div>
 </section>
 
 <section class="tab" id="tab-settings" aria-labelledby="t-settings" hidden>
@@ -335,7 +340,7 @@ $icon = [
 </nav>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-<script>window.APP = <?= json_encode(['csrf' => csrf(), 'ad' => get_ad(), 'settings' => public_settings()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+<script>window.APP = <?= json_encode(['csrf' => csrf(), 'ad' => get_ad(), 'settings' => public_settings(), 'log' => recent_sends()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
 <script src="assets/flyer.js"></script>
 <script src="assets/app.js"></script>
 <script src="assets/settings.js"></script>

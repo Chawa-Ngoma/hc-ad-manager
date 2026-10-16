@@ -342,6 +342,8 @@
   }
 
   window.drawFlyer = drawFlyer;
-  // "Wednesday 30 September" for an ISO date, from the same fixed English names; '' when it is not a date.
-  window.flyerDate = function (iso) { var d = parseDate(iso); return d ? d.short : ''; };
+  // "Wednesday 30 September" (or, with long, "Wednesday 30 September 2026") for an ISO date, from the same fixed
+  // English names; '' when it is not a date. flyerTime gives "09:30 AM" from "09:30".
+  window.flyerDate = function (iso, long) { var d = parseDate(iso); return d ? (long ? d.long : d.short) : ''; };
+  window.flyerTime = fmtTime;
 })();

@@ -354,3 +354,9 @@ function get_ad(): array
     }
     return clean_ad($stored);
 }
+
+// The 10 most recent finished sends, newest first. The table holds counts only, never an address.
+function recent_sends(): array
+{
+    return db()->query('SELECT at, subject, total, sent, failed FROM sends ORDER BY id DESC LIMIT 10')->fetchAll(PDO::FETCH_ASSOC);
+}
