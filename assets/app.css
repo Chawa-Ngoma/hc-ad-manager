@@ -41,6 +41,13 @@ input:focus, textarea:focus, select:focus { border-color: var(--accent); }
 ::placeholder { color: var(--muted); opacity: 1; } /* the browsers' own grey is too faint on the dark field */
 /* Date and time: native pickers in the app colour; no extra padding, so the 48px minimum height decides the height. */
 input[type=date], input[type=time] { accent-color: var(--accent); padding-block: 0; }
+/* iOS Safari gives these two an intrinsic minimum width and centres the value. Drop the native look so they shrink
+   into their grid cell and read left to right like the text fields; min-height keeps an empty one 48px tall. */
+input[type=date], input[type=time] {
+  -webkit-appearance: none; appearance: none; min-width: 0; width: 100%; max-width: 100%; min-height: 48px;
+  text-align: left; text-align-last: left;
+}
+input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-and-time-value { text-align: left; min-width: 0; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 48px; padding: 0 20px; cursor: pointer;
@@ -99,7 +106,7 @@ body.auth { min-height: 100vh; display: flex; align-items: center; justify-conte
 .panel h2 { margin-bottom: 4px; }
 fieldset.field { margin: 0 0 14px; padding: 0; border: 0; min-width: 0; }
 fieldset.field legend { padding: 0; margin-bottom: 6px; font-weight: 600; font-size: .9rem; }
-.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
 .pair > * { min-width: 0; margin-bottom: 0; }
 textarea { resize: vertical; line-height: 1.45; }
 .pills { display: flex; flex-wrap: wrap; gap: 8px; }

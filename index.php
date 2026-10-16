@@ -3,6 +3,14 @@
 require __DIR__ . '/lib.php';
 boot();
 
+// "assets/app.css?v=1a2b3c4d": the version is a short hash of the file's content, so a phone fetches a file again only
+// when it really changed (a file time can change without the content, or stay the same after an upload).
+function asset_url(string $path): string
+{
+    $hash = @md5_file(__DIR__ . '/' . $path);
+    return $path . ($hash === false ? '' : '?v=' . substr($hash, 0, 8));
+}
+
 const MAX_FAILS = 5;
 const LOCK_SECONDS = 60;
 const RESET_FLAG = 'reset-password.txt';
@@ -121,7 +129,7 @@ $icon = [
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="assets/icon-192.png">
 <link rel="apple-touch-icon" href="assets/icon-192.png">
-<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="<?= h(asset_url('assets/app.css')) ?>">
 </head>
 <?php if (!authed()): ?>
 <body class="auth">
@@ -392,10 +400,9 @@ $icon = [
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script>window.APP = <?= json_encode(['csrf' => csrf(), 'ad' => get_ad(), 'settings' => public_settings(), 'log' => recent_sends()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
-<script src="assets/flyer.js"></script>
-<script src="assets/app.js"></script>
-<script src="assets/settings.js"></script>
-<script src="assets/send.js"></script>
+<?php foreach (['flyer', 'app', 'settings', 'send'] as $js): ?>
+<script src="<?= h(asset_url("assets/$js.js")) ?>"></script>
+<?php endforeach; ?>
 </body>
 <?php endif; ?>
 </html>
