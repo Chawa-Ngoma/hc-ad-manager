@@ -165,6 +165,23 @@
     toast('Changes undone.');
   });
 
+  // Save flyer picture: share it where the phone allows, otherwise download Flyer.png. Draws now, from the form, so unsaved edits are in it.
+  document.getElementById('save-flyer').addEventListener('click', function () {
+    window.drawFlyer(canvas, readForm());
+    canvas.toBlob(async function (blob) {
+      if (!blob) { toast('Could not make the picture. Please try again.'); return; }
+      var file = new File([blob], 'Flyer.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'Flyer' }); return; }
+        catch (err) { if (err && err.name === 'AbortError') return; }
+      }
+      var url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = 'Flyer.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    }, 'image/png');
+  });
+
   fillForm(saved);
   refresh();
   redraw();

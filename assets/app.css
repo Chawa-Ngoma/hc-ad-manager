@@ -120,6 +120,8 @@ textarea { resize: vertical; line-height: 1.45; }
   display: block; width: 100%; max-width: 440px; height: auto; aspect-ratio: 2 / 3; margin-inline: auto;
   background: #fbf3ee; border-radius: 14px; box-shadow: 0 10px 30px rgba(0, 0, 0, .18);
 }
+.previewcol { display: flex; flex-direction: column; gap: 14px; }
+.previewcol .btn { max-width: 440px; margin-inline: auto; }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--accent-soft); border-radius: 14px; }
 .seg button { min-height: 44px; border: 0; border-radius: 11px; background: none; color: var(--muted); font-weight: 600; cursor: pointer; }
 .seg button[aria-pressed=true] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }

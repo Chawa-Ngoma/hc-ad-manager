@@ -182,7 +182,7 @@ $icon = [
 </div>
 <p class="state" id="ad-state" role="status"></p>
 </form>
-<div class="previewcol"><canvas id="flyer" class="flyer" width="1200" height="1800" role="img" aria-label="Preview of the flyer"></canvas></div>
+<div class="previewcol"><canvas id="flyer" class="flyer" width="1200" height="1800" role="img" aria-label="Preview of the flyer"></canvas><button type="button" class="btn primary block" id="save-flyer">Save flyer picture</button></div>
 </div>
 </section>
 

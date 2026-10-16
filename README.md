@@ -29,3 +29,5 @@ On the first visit the app asks you to choose a password (at least 8 characters)
 The Ad tab holds the venue, date, time, headline, description, items shown, contacts and payment line. Save changes stores the ad on the server and shows the cleaned version; Undo changes goes back to the last saved version. The first time the app runs it starts with neutral example text and today's date (Africa/Johannesburg).
 
 The flyer preview redraws as you type, without contacting the server. On a phone, "Edit details" and "See the ad" switch between the form and the flyer; from 900 px wide they sit side by side.
+
+Save flyer picture (under the flyer) makes a 1200 x 1800 PNG named Flyer.png from what is on screen, saved or not. On a phone that supports it, it opens the share sheet; otherwise the picture downloads. The phone share sheet needs HTTPS (localhost is fine for testing).
