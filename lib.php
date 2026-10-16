@@ -168,10 +168,102 @@ function dec(string $blob): string
     return $plain === false ? '' : $plain;
 }
 
-// The name shown in the header and on the sign-in card. Settings will supply it later.
+// The name shown in the signed-in header: the saved sender name, or "Ad Manager" until one is saved.
 function business_name(): string
 {
-    return 'Ad Manager';
+    $name = get_settings()['senderName'];
+    return $name !== '' ? $name : 'Ad Manager';
+}
+
+// Mail settings. Empty sender email or server means "not filled in yet"; sending is blocked until they are.
+const SET_DEFAULT = [
+    'senderName' => '', 'senderEmail' => '', 'replyTo' => '', 'ccEmail' => '',
+    'smtpHost' => '', 'smtpPort' => 465, 'smtpSecurity' => 'SSL/TLS',
+    'smtpUser' => '', 'smtpPassEnc' => '', 'trustCert' => false, 'batchLimit' => 50,
+];
+
+// The saved settings; any missing or wrongly typed value falls back to its default.
+function get_settings(): array
+{
+    $stored = kget('settings');
+    $out = SET_DEFAULT;
+    if (is_array($stored)) {
+        foreach (SET_DEFAULT as $key => $default) {
+            if (isset($stored[$key]) && gettype($stored[$key]) === gettype($default)) {
+                $out[$key] = $stored[$key];
+            }
+        }
+    }
+    return $out;
+}
+
+// What the browser may see: everything except the encrypted password, plus whether one is saved.
+function public_settings(): array
+{
+    $s = get_settings();
+    $s['hasPass'] = $s['smtpPassEnc'] !== '';
+    unset($s['smtpPassEnc']);
+    return $s;
+}
+
+// Trims and collapses whitespace like clean_text, but rejects a value that is too long instead of cutting it.
+function set_text(array $in, array $base, string $key, int $max, string $label): string
+{
+    $v = array_key_exists($key, $in) ? clean_text($in[$key], 10000) : $base[$key];
+    if (!preg_match('/^.{0,' . $max . '}$/su', $v)) {
+        throw new InvalidArgumentException($label . ' must be ' . $max . ' characters or fewer.');
+    }
+    return $v;
+}
+
+function set_int($v, int $min, int $max, string $label): int
+{
+    $v = is_string($v) ? trim($v) : $v;
+    if (is_string($v) && ctype_digit($v)) {
+        $v = (int) $v;
+    }
+    if (!is_int($v) || $v < $min || $v > $max) {
+        throw new InvalidArgumentException($label . ' must be a number from ' . $min . ' to ' . $max . '.');
+    }
+    return $v;
+}
+
+// Checks every value and returns the new settings, or throws InvalidArgumentException with a message naming
+// the field. Nothing is stored here. smtpPassEnc is never read from $in: a non-empty smtpPass is encrypted,
+// an empty one keeps the saved value from $base.
+function clean_settings(array $in, array $base): array
+{
+    $out = $base;
+    $out['senderName'] = set_text($in, $base, 'senderName', 60, 'Sender name');
+    foreach (['senderEmail' => 'Sender email', 'replyTo' => 'Replies go to', 'ccEmail' => 'Always CC me'] as $key => $label) {
+        $out[$key] = set_text($in, $base, $key, 254, $label);
+        if ($out[$key] !== '' && !filter_var($out[$key], FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException($label . ' is not a valid address.');
+        }
+    }
+    $out['smtpHost'] = set_text($in, $base, 'smtpHost', 253, 'Server name');
+    if ($out['smtpHost'] !== '' && !preg_match('/^[A-Za-z0-9.-]+$/', $out['smtpHost'])) {
+        throw new InvalidArgumentException('Server name can only have letters, digits, dots and hyphens.');
+    }
+    $out['smtpPort'] = set_int($in['smtpPort'] ?? $base['smtpPort'], 1, 65535, 'Port');
+    $out['smtpSecurity'] = $in['smtpSecurity'] ?? $base['smtpSecurity'];
+    if (!in_array($out['smtpSecurity'], ['SSL/TLS', 'STARTTLS', 'None'], true)) {
+        throw new InvalidArgumentException('Security must be SSL/TLS, STARTTLS or None.');
+    }
+    $out['smtpUser'] = set_text($in, $base, 'smtpUser', 100, 'Username');
+    $out['trustCert'] = $in['trustCert'] ?? $base['trustCert'];
+    if (!is_bool($out['trustCert'])) {
+        throw new InvalidArgumentException('Trust the server certificate must be on or off.');
+    }
+    $out['batchLimit'] = set_int($in['batchLimit'] ?? $base['batchLimit'], 1, 200, 'Most emails at one time');
+    $pass = $in['smtpPass'] ?? '';
+    if (is_string($pass) && $pass !== '') {
+        if (strlen($pass) > 255) {
+            throw new InvalidArgumentException('Password must be 255 characters or fewer.');
+        }
+        $out['smtpPassEnc'] = enc($pass);
+    }
+    return $out;
 }
 
 // Items the ad can show, in display order: key => label.

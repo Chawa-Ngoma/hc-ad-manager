@@ -136,3 +136,9 @@ textarea { resize: vertical; line-height: 1.45; }
   .seg { display: none; }
   .previewcol { position: sticky; top: 16px; }
 }
+
+/* Settings */
+.settings { max-width: 640px; }
+.hint { color: var(--muted); font-size: .85rem; font-weight: 400; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; }
+.check input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }

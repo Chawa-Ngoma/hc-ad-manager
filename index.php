@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !authed()) {
 
 $setup = kget('pass_hash') === null;
 
-$title = business_name();
+$title = 'Ad Manager'; // the sign-in card and the page title never read the settings
 $icon = [
     'ad' => '<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/>',
     'send' => '<path d="M3 11l18-8-7 18-3-7z"/>',
@@ -108,7 +108,7 @@ $icon = [
 <body>
 <div class="app">
 <header class="top">
-<div class="brand"><?= h($title) ?></div>
+<div class="brand"><?= h(business_name()) ?></div>
 <button type="button" class="btn" id="signout">Sign out</button>
 </header>
 
@@ -194,7 +194,63 @@ $icon = [
 </section>
 
 <section class="tab" id="tab-settings" aria-labelledby="t-settings" hidden>
-<div class="panel"><h2>Settings</h2><p class="muted">The settings will go here.</p></div>
+<form class="editor settings" id="settings-form" novalidate>
+<div class="panel">
+<h2>Email settings</h2>
+<label class="field">Sender name
+<input type="text" name="senderName" maxlength="60" autocomplete="off" placeholder="The name customers see">
+</label>
+<label class="field">Sender email
+<input type="email" name="senderEmail" maxlength="254" autocomplete="off" placeholder="ads@example.com">
+</label>
+<label class="field">Replies go to (optional)
+<input type="email" name="replyTo" maxlength="254" autocomplete="off" placeholder="Leave empty to use the sender email">
+</label>
+<label class="field">Always CC me (optional)
+<input type="email" name="ccEmail" maxlength="254" autocomplete="off" placeholder="An address that gets a copy of every email">
+</label>
+</div>
+<div class="panel">
+<h2>Mail server (SMTP)</h2>
+<p class="muted">Use the details of the email account you created in your hosting control panel.</p>
+<label class="field">Server name
+<input type="text" name="smtpHost" maxlength="253" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="mail.example.com">
+</label>
+<div class="pair">
+<label class="field">Port
+<input type="number" name="smtpPort" min="1" max="65535" inputmode="numeric" autocomplete="off">
+</label>
+<label class="field">Security
+<select name="smtpSecurity">
+<option value="SSL/TLS">SSL/TLS</option>
+<option value="STARTTLS">STARTTLS</option>
+<option value="None">None</option>
+</select>
+</label>
+</div>
+<label class="field">Username
+<input type="text" name="smtpUser" maxlength="100" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="ads@example.com">
+</label>
+<label class="field">Password
+<input type="password" name="smtpPass" autocomplete="new-password">
+<span class="hint" id="pass-saved" hidden>A password is saved. Leave this empty to keep it.</span>
+</label>
+<label class="check"><input type="checkbox" name="trustCert"><span>Trust the server certificate</span></label>
+<p class="hint">Use this only when a test fails with a certificate error. It turns off the certificate name check for sending email only.</p>
+</div>
+<div class="panel">
+<h2>Limits and password</h2>
+<label class="field">Most emails at one time (1 to 200)
+<input type="number" name="batchLimit" min="1" max="200" inputmode="numeric" autocomplete="off">
+</label>
+<label class="field">New app password (optional)
+<input type="password" name="newPassword" autocomplete="new-password">
+<span class="hint">At least 8 characters. Leave this empty to keep your current password.</span>
+</label>
+</div>
+<div class="notice" id="settings-error" role="alert" hidden></div>
+<button type="submit" class="btn primary block" id="settings-save">Save settings</button>
+</form>
 </section>
 </div>
 
@@ -205,9 +261,10 @@ $icon = [
 </nav>
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-<script>window.APP = <?= json_encode(['csrf' => csrf(), 'ad' => get_ad()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+<script>window.APP = <?= json_encode(['csrf' => csrf(), 'ad' => get_ad(), 'settings' => public_settings()], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
 <script src="assets/flyer.js"></script>
 <script src="assets/app.js"></script>
+<script src="assets/settings.js"></script>
 </body>
 <?php endif; ?>
 </html>

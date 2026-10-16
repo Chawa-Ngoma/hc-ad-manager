@@ -38,6 +38,35 @@ switch ($_POST['action'] ?? '') {
         $ad = clean_ad($in);
         kset('ad', $ad);
         json_out(['ad' => $ad]);
+    case 'save_settings':
+        $in = json_decode((string) ($_POST['data'] ?? ''), true);
+        if (!is_array($in)) {
+            json_out(['error' => 'The settings could not be read. Please try again.'], 422);
+        }
+        $newPassword = $in['newPassword'] ?? '';
+        if (!is_string($newPassword)) {
+            $newPassword = '';
+        }
+        try {
+            $settings = clean_settings($in, get_settings());
+        } catch (InvalidArgumentException $e) {
+            json_out(['error' => $e->getMessage()], 422);
+        }
+        if ($newPassword !== '' && strlen($newPassword) < 8) {
+            json_out(['error' => 'The app password must be at least 8 characters.'], 422);
+        }
+        // Everything is valid: store the settings and the new password together, or neither.
+        db()->beginTransaction();
+        kset('settings', $settings);
+        if ($newPassword !== '') {
+            kset('pass_hash', password_hash($newPassword, PASSWORD_DEFAULT));
+        }
+        db()->commit();
+        if ($newPassword !== '') {
+            session_regenerate_id(true);
+            $_SESSION['csrf'] = bin2hex(random_bytes(32));
+        }
+        json_out(['settings' => public_settings(), 'csrf' => csrf()]);
     default:
         json_out(['error' => 'Unknown action.'], 400);
 }
