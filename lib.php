@@ -12,6 +12,8 @@ if (!defined('APP_DATA_DIR')) {
 
 function boot(): void
 {
+    date_default_timezone_set('Africa/Johannesburg');
+
     foreach (['pdo_sqlite', 'openssl'] as $ext) {
         if (!extension_loaded($ext)) {
             http_response_code(500);

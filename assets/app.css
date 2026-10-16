@@ -142,3 +142,7 @@ textarea { resize: vertical; line-height: 1.45; }
 .hint { color: var(--muted); font-size: .85rem; font-weight: 400; }
 .check { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; }
 .check input { width: 22px; height: 22px; margin: 0; accent-color: var(--accent); }
+.pair + .hint { margin: -6px 0 14px; }
+.result { padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: var(--field); }
+.result.ok::before { content: "\2713\00a0"; color: var(--accent-text); font-weight: 700; }
+.result.err { border-color: var(--err); background: var(--err-bg); color: var(--err); }

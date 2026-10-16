@@ -228,6 +228,7 @@ $icon = [
 </select>
 </label>
 </div>
+<p class="hint">"None" sends the password without encryption.</p>
 <label class="field">Username
 <input type="text" name="smtpUser" maxlength="100" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="ads@example.com">
 </label>
@@ -236,7 +237,12 @@ $icon = [
 <span class="hint" id="pass-saved" hidden>A password is saved. Leave this empty to keep it.</span>
 </label>
 <label class="check"><input type="checkbox" name="trustCert"><span>Trust the server certificate</span></label>
-<p class="hint">Use this only when a test fails with a certificate error. It turns off the certificate name check for sending email only.</p>
+<p class="hint">Use this only when a test fails with a certificate error. It turns off the certificate name check and accepts a self-signed certificate, for sending email only.</p>
+<label class="field">Send a test to
+<input type="email" name="testTo" maxlength="254" autocomplete="off" placeholder="ads@example.com">
+</label>
+<button type="button" class="btn block" id="test-send">Send test email</button>
+<div class="result" id="test-result" role="status" hidden></div>
 </div>
 <div class="panel">
 <h2>Limits and password</h2>

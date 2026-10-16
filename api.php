@@ -67,6 +67,35 @@ switch ($_POST['action'] ?? '') {
             $_SESSION['csrf'] = bin2hex(random_bytes(32));
         }
         json_out(['settings' => public_settings(), 'csrf' => csrf()]);
+    case 'test':
+        set_time_limit(40); // each connection step waits at most 20 seconds
+        $in = json_decode((string) ($_POST['data'] ?? ''), true);
+        $to = is_array($in) ? ($in['to'] ?? '') : '';
+        if (!is_string($to) || preg_match('/[\r\n]/', $to) || strlen(trim($to)) > 254 || !filter_var(trim($to), FILTER_VALIDATE_EMAIL)) {
+            json_out(['error' => 'Send a test to is not a valid address.'], 422);
+        }
+        $to = trim($to);
+        require_once __DIR__ . '/mailer.php';
+        $settings = get_settings();
+        if (!smtp_ready($settings)) {
+            json_out(['error' => 'Please fill in the sender email and the server name first.'], 422);
+        }
+        try {
+            $mailer = mail_open($settings);
+            mail_send_one(
+                $mailer, $settings, $to, 'Test email from Ad Manager',
+                '<p>This is a test from Ad Manager. If you can read this, your email settings work.</p>',
+                'This is a test from Ad Manager. If you can read this, your email settings work.'
+            );
+            $mailer->smtpClose();
+        } catch (\PHPMailer\PHPMailer\Exception $e) {
+            $detail = $settings['smtpSecurity'] === 'SSL/TLS' ? mail_tls_reason($settings) : '';
+            json_out(['error' => mail_explain($e, $detail, $settings['smtpSecurity'])], 502);
+        } catch (Throwable $e) {
+            error_log('Ad Manager: unexpected error while sending a test email (' . get_class($e) . ').'); // never the message or settings
+            json_out(['error' => 'Something went wrong while sending. Please try again.'], 500);
+        }
+        json_out(['ok' => true]);
     default:
         json_out(['error' => 'Unknown action.'], 400);
 }
