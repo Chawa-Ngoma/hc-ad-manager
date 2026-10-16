@@ -5,6 +5,34 @@ boot();
 
 const MAX_FAILS = 5;
 const LOCK_SECONDS = 60;
+const RESET_FLAG = 'reset-password.txt';
+const RESET_MINUTES = 60;
+
+// Reset mode: the owner made the file data/reset-password.txt (File Manager). It counts for 60 minutes from its file
+// time. A file that is older, or dated in the future, is ignored and removed.
+function reset_on(): bool
+{
+    $file = APP_DATA_DIR . '/' . RESET_FLAG;
+    clearstatcache(true, $file);
+    if (!is_file($file)) {
+        return false;
+    }
+    $age = time() - (int) filemtime($file);
+    if ($age >= 0 && $age <= RESET_MINUTES * 60) {
+        return true;
+    }
+    @unlink($file);
+    return false;
+}
+
+// A reset ends every old sign-in and clears the lockout.
+function reset_finish(): void
+{
+    foreach (glob(APP_DATA_DIR . '/sessions/sess_*') ?: [] as $session) {
+        @unlink($session);
+    }
+    kset('fails', ['count' => 0, 'until' => 0]);
+}
 
 // Returns an error message, or '' when the user is now signed in.
 function handle_post(): string
@@ -14,13 +42,21 @@ function handle_post(): string
     }
     $password = (string) ($_POST['password'] ?? '');
 
-    // First-run setup is only possible while no password exists.
-    if (kget('pass_hash') === null) {
+    // A password can be chosen on the first run (none exists yet) or while reset mode is on, and at no other time.
+    $reset = reset_on();
+    if ($reset || kget('pass_hash') === null) {
         if (strlen($password) < 8) {
             return 'Your password must be at least 8 characters.';
         }
         if (!hash_equals($password, (string) ($_POST['password2'] ?? ''))) {
             return 'The two passwords do not match.';
+        }
+        if ($reset) {
+            // Taking the flag away is what claims the reset: of two requests, only one can succeed.
+            if (!@unlink(APP_DATA_DIR . '/' . RESET_FLAG)) {
+                return 'Reset mode has ended. Please try again.';
+            }
+            reset_finish();
         }
         kset('pass_hash', password_hash($password, PASSWORD_DEFAULT));
         sign_in();
@@ -59,7 +95,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !authed()) {
     }
 }
 
-$setup = kget('pass_hash') === null;
+$reset = reset_on();
+$setup = $reset || kget('pass_hash') === null;
 
 // The owner is told when the site is not on HTTPS (this machine, for testing, is exempt).
 $plain = (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') && !in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1', '::1'], true);
@@ -93,6 +130,9 @@ $icon = [
 <h2><?= $setup ? 'Choose a password' : 'Sign in' ?></h2>
 <?php if ($error !== ''): ?>
 <div class="notice" role="alert"><?= h($error) ?></div>
+<?php endif; ?>
+<?php if ($reset): ?>
+<div class="notice" id="reset-note" role="status">Reset mode is on. Choose a new password. To cancel, delete the file reset-password.txt from the data folder.</div>
 <?php endif; ?>
 <?php if ($plain): ?>
 <div class="notice" id="https-note"><?= h($plainNote) ?></div>

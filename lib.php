@@ -32,6 +32,7 @@ function unexpected_error(Throwable $e): void
 function boot(): void
 {
     set_exception_handler('unexpected_error');
+    header_remove('X-Powered-By'); // do not announce the PHP version (expose_php cannot be changed from code)
     header('X-Frame-Options: DENY');
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: same-origin');
