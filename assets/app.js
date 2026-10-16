@@ -14,7 +14,7 @@
 
   // Posts one action to api.php and resolves with the parsed JSON.
   // Rejects with an Error whose message is safe to show to the user.
-  async function api(action, data, file) {
+  async function api(action, data, file, stay) {
     var body = new FormData();
     body.append('action', action);
     body.append('data', JSON.stringify(data || {}));
@@ -29,21 +29,30 @@
         credentials: 'same-origin'
       });
     } catch (e) {
-      throw new Error('Cannot reach the server. Please check your connection and try again.');
+      throw new Error('Cannot reach the server. Please check your connection and try again.'); // no .status: the network failed
     }
 
     if (res.status === 401) {
-      location.reload();
-      throw new Error('Please sign in again.');
+      if (!stay) location.reload(); // a send in progress stays on screen instead, so its numbers are not lost
+      var signedOut = new Error('Please sign in again.');
+      signedOut.status = 401;
+      throw signedOut;
     }
 
     var json;
     try {
       json = await res.json();
     } catch (e) {
-      throw new Error('Something went wrong. Please try again.');
+      var odd = new Error('Something went wrong. Please try again.');
+      odd.status = res.status;
+      throw odd;
     }
-    if (!res.ok) throw new Error(json.error || 'Something went wrong. Please try again.');
+    if (!res.ok) {
+      var failed = new Error(json.error || 'Something went wrong. Please try again.');
+      failed.status = res.status;
+      failed.body = json;
+      throw failed;
+    }
     return json;
   }
 
@@ -141,21 +150,29 @@
   document.getElementById('seg-edit').addEventListener('click', function () { showView('edit'); });
   document.getElementById('seg-see').addEventListener('click', function () { showView('see'); });
 
-  form.addEventListener('submit', async function (e) {
-    e.preventDefault();
+  // Saves the ad. Resolves to '' when saved, or the reason it was refused. The Send tab uses it before every send.
+  async function saveAd(quiet) {
     saveBtn.disabled = true;
+    var reason = '';
     try {
       var res = await api('save_ad', readForm());
       saved = res.ad;
       fillForm(saved);
       redraw();
       errorEl.hidden = true;
-      toast('Saved. The ad is up to date.');
+      if (!quiet) toast('Saved. The ad is up to date.');
     } catch (err) {
       errorEl.textContent = err.message; // stays until she edits a field or saves again
       errorEl.hidden = false;
+      reason = err.message;
     }
     refresh();
+    return reason;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    saveAd();
   });
 
   undoBtn.addEventListener('click', function () {
@@ -188,5 +205,13 @@
   redraw();
 
   window.api = api;
+  window.saveAd = saveAd;
+  // The flyer as a PNG blob, drawn from the form (after a save that is the saved ad).
+  window.flyerPng = function () {
+    return new Promise(function (resolve) {
+      window.drawFlyer(canvas, readForm());
+      canvas.toBlob(resolve, 'image/png');
+    });
+  };
   window.toast = toast;
 })();

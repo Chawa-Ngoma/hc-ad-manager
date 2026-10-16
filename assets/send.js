@@ -1,6 +1,6 @@
-// Send tab: compose the email, check the addresses, preview what customers will see, and review before sending.
-// Addresses stay in this page: they are never sent to the server before a send, never saved on the device and never
-// put in a URL. Only the message text is remembered locally.
+// Send tab: compose the email, check the addresses, preview what customers will see, review, and send.
+// Addresses stay in this page until "Send now": they are never sent to the server before that, never saved on the
+// device and never put in a URL. Only the message text is remembered locally.
 (function () {
   'use strict';
 
@@ -104,8 +104,16 @@
     previewTimer = setTimeout(function () { if (!tab.hidden) loadPreview(); }, 400);
   }
 
+  // ---- which card shows under the preview: '' (just Review and send), summary, progress, problem or result
+  var panels = { summary: summary, progress: $('send-progress'), problem: $('send-problem'), result: $('send-result') };
+  var sending = false, job = null;
+  function showPanel(name) {
+    Object.keys(panels).forEach(function (k) { panels[k].hidden = k !== name; });
+    review.hidden = name !== '';
+  }
+  function closeSummary() { if (!summary.hidden) showPanel(''); }
+
   // ---- review
-  function closeSummary() { summary.hidden = true; review.hidden = false; }
 
   function problem(c) {
     var s = settings();
@@ -127,11 +135,141 @@
     $('sum-cc').textContent = cc.value.trim() || 'None';
     $('sum-subject').textContent = one(subject.value);
     $('sum-image').textContent = image.checked ? 'Attached' : 'Not attached';
-    summary.hidden = false;
-    review.hidden = true;
+    showPanel('summary');
   });
   $('send-back').addEventListener('click', closeSummary);
   $('go-settings').addEventListener('click', function () { $('t-settings').click(); });
+
+  // ---- the send
+  function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+  function tokens(box) { return box.value.split(/[\s,;]+/).filter(Boolean); }
+
+  // Every control in the Send tab, and Sign out, is switched off while a send runs.
+  function lock(on) {
+    Array.prototype.forEach.call(tab.querySelectorAll('input, textarea, select, button'), function (el) {
+      if (!el.closest('#send-progress, #send-problem, #send-result')) el.disabled = on;
+    });
+    $('signout').disabled = on;
+  }
+
+  window.addEventListener('beforeunload', function (e) {
+    if (sending) { e.preventDefault(); e.returnValue = ''; }
+  });
+
+  function setProgress(done, total, label) {
+    var pct = total ? Math.round(done / total * 100) : 0;
+    $('send-bar-fill').style.width = pct + '%';
+    $('send-bar').setAttribute('aria-valuenow', String(pct));
+    $('send-progress-text').textContent = label || done + ' of ' + total + ' done';
+  }
+
+  // how: 'resume' (Try again carries on), 'signin' (sign in again) or 'back' (nothing to carry on with)
+  function showProblem(text, how) {
+    sending = how === 'resume'; // only a send that can carry on keeps the "leave this page?" warning
+    $('send-problem-text').textContent = text;
+    $('send-retry').hidden = how !== 'resume';
+    $('send-signin').hidden = how !== 'signin';
+    $('send-stop').hidden = how === 'signin';
+    $('send-stop').textContent = how === 'resume' ? 'Stop sending' : 'Back';
+    showPanel('problem');
+  }
+
+  function take(r) {
+    job.total = r.total;
+    job.next = r.next;
+    job.sent = r.sent;
+    job.failed = r.failed || [];
+    job.unconfirmed = r.unconfirmed || [];
+    setProgress(job.next, job.total);
+  }
+
+  function fillList(id, items) {
+    var list = $(id + '-list');
+    list.textContent = '';
+    items.forEach(function (text) {
+      var li = document.createElement('li');
+      li.textContent = text;
+      list.appendChild(li);
+    });
+    $(id).hidden = items.length === 0;
+  }
+
+  function finish(r) {
+    sending = false;
+    lock(false);
+    var bad = job.failed.length, unsure = job.unconfirmed.length, clean = !bad && !unsure, copy = r.cc;
+    $('send-result').className = 'panel ' + (clean ? 'good' : 'problems');
+    $('send-result-title').textContent = clean ? 'Sent' : 'Sent with problems';
+    $('send-result-counts').textContent = job.sent + ' of ' + job.total + ' sent.' +
+      (bad ? ' ' + bad + ' did not go out.' : '') + (unsure ? ' ' + unsure + ' may or may not have received it.' : '');
+    fillList('send-failed', job.failed.map(function (f) { return f.to + ': ' + f.err; }));
+    fillList('send-unconfirmed', job.unconfirmed.map(function (u) { return u.to; }));
+    $('send-cc-note').hidden = !copy;
+    if (copy) {
+      $('send-cc-note').textContent = copy.skipped ? 'No copy was sent to you because no customer email was accepted.'
+        : copy.ok ? 'Your copy was sent.' : 'Your copy could not be sent: ' + copy.err + ' This did not affect your customers.';
+    }
+    showPanel('result');
+  }
+
+  // Calls send_chunk until everyone is done. Only this call is ever repeated automatically, and that is safe:
+  // the server never sends to the same person twice.
+  async function runChunks() {
+    var lost = 0, r;
+    sending = true;
+    showPanel('progress');
+    setProgress(job.next, job.total);
+    while (true) {
+      try {
+        r = await window.api('send_chunk', { id: job.id }, null, true);
+        lost = 0;
+      } catch (err) {
+        if (err.status === 401) {
+          showProblem('You were signed out. Some emails may already have gone out. ' + job.sent + ' of ' + job.total + ' had gone out when you were signed out.', 'signin');
+          return;
+        }
+        if (!err.status && lost < 3) { lost++; await sleep(2000); continue; } // the network dropped: ask again
+        if (err.body && typeof err.body.next === 'number') take(err.body);
+        showProblem(err.message + ' ' + job.sent + ' of ' + job.total + ' had gone out when it stopped. Some emails may already have gone out, so do not send everything again.', err.status === 404 ? 'back' : 'resume');
+        return;
+      }
+      if (r.busy) { await sleep(1500); continue; } // another request is still working on this send
+      take(r);
+      if (r.done) { finish(r); return; }
+    }
+  }
+
+  async function startSend() {
+    var c = checkAddresses(), why = problem(c);
+    if (why) { showPanel(''); hint.hidden = false; hint.textContent = why; return; }
+    lock(true);
+    showPanel('progress');
+    setProgress(0, 0, 'Saving your ad…');
+    var reason = await window.saveAd(true); // what is sent is what is saved
+    if (reason) { showProblem(reason + ' Nothing was sent.', 'back'); return; }
+    var png = null;
+    if (image.checked) {
+      setProgress(0, 0, 'Getting the flyer picture ready…');
+      png = await window.flyerPng();
+      if (!png) { showProblem('The flyer picture could not be made. Nothing was sent. Please try again.', 'back'); return; }
+    }
+    setProgress(0, 0, 'Getting ready…');
+    var prep;
+    try { // not repeated automatically: a person decides whether to try again
+      prep = await window.api('send_prepare', { to: tokens(to), cc: tokens(cc), subject: one(subject.value), msg: message.value, details: details.checked, image: image.checked }, png, true);
+    } catch (err) {
+      showProblem(err.status === 401 ? 'You were signed out. Nothing was sent.' : err.message + ' Nothing was sent.', err.status === 401 ? 'signin' : 'back');
+      return;
+    }
+    job = { id: prep.id, total: prep.total, next: 0, sent: 0, failed: [], unconfirmed: [] };
+    runChunks();
+  }
+
+  $('send-now').addEventListener('click', startSend);
+  $('send-retry').addEventListener('click', function () { runChunks(); });
+  $('send-signin').addEventListener('click', function () { location.reload(); });
+  $('send-stop').addEventListener('click', function () { sending = false; job = null; lock(false); showPanel(''); });
+  $('send-again').addEventListener('click', function () { job = null; to.value = ''; checkAddresses(); hint.hidden = true; showPanel(''); });
 
   // ---- wiring
   to.addEventListener('input', function () { checkAddresses(); hint.hidden = true; closeSummary(); });

@@ -1,7 +1,7 @@
 Options -Indexes
 AddType application/manifest+json .webmanifest
 
-<FilesMatch "^(lib\.php|mailer\.php|email\.php)$|\.(sqlite|key|md)$">
+<FilesMatch "^(lib\.php|mailer\.php|email\.php|send\.php)$|\.(sqlite|key|md)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>

@@ -231,9 +231,31 @@ $icon = [
 </dl>
 <div class="row">
 <button type="button" class="btn" id="send-back">Go back</button>
-<button type="button" class="btn primary" id="send-now" disabled>Send now</button>
+<button type="button" class="btn primary" id="send-now">Send now</button>
 </div>
-<p class="hint">Sending is not switched on yet.</p>
+</div>
+<div class="panel" id="send-progress" hidden>
+<h2>Sending</h2>
+<div class="bar" id="send-bar" role="progressbar" aria-label="Sending progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="bar-fill" id="send-bar-fill"></div></div>
+<p id="send-progress-text" role="status"></p>
+<p class="hint">Please keep this page open until it says it is finished.</p>
+</div>
+<div class="panel problems" id="send-problem" role="alert" hidden>
+<h2>Sending stopped</h2>
+<p id="send-problem-text"></p>
+<div class="row">
+<button type="button" class="btn primary" id="send-retry">Try again</button>
+<button type="button" class="btn" id="send-signin">Sign in again</button>
+<button type="button" class="btn" id="send-stop">Back</button>
+</div>
+</div>
+<div class="panel" id="send-result" hidden>
+<h2 id="send-result-title"></h2>
+<p id="send-result-counts"></p>
+<div id="send-failed" hidden><h3>These did not go out</h3><ul class="plainlist" id="send-failed-list"></ul></div>
+<div id="send-unconfirmed" hidden><h3>These may or may not have received it</h3><ul class="plainlist" id="send-unconfirmed-list"></ul></div>
+<p id="send-cc-note" hidden></p>
+<button type="button" class="btn primary block" id="send-again">Start another</button>
 </div>
 </div>
 </div>

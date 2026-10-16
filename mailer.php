@@ -50,8 +50,8 @@ function mail_open(array $s): PHPMailer
     return $m;
 }
 
-// Sends one message to one address. $png is the raw bytes of a PNG to attach, or null.
-function mail_send_one(PHPMailer $m, array $s, string $to, string $subject, string $html, string $text, ?string $png = null): void
+// Sends one message to one address (or, for a copy, to a short list of them). $png is the raw bytes of a PNG to attach, or null.
+function mail_send_one(PHPMailer $m, array $s, string|array $to, string $subject, string $html, string $text, ?string $png = null): void
 {
     $m->clearAllRecipients();
     $m->clearReplyTos();
@@ -60,7 +60,9 @@ function mail_send_one(PHPMailer $m, array $s, string $to, string $subject, stri
     if ($s['replyTo'] !== '') {
         $m->addReplyTo($s['replyTo'], $s['senderName']);
     }
-    $m->addAddress($to);
+    foreach ((array) $to as $address) {
+        $m->addAddress($address);
+    }
     $m->Subject = clean_text($subject, 300); // one line, no control characters, room for a long venue
     $m->isHTML(true);
     $m->Body = $html;
@@ -107,6 +109,9 @@ function mail_explain($error, string $detail = '', string $security = ''): strin
     if (preg_match('/could not connect|connect\(\) failed|failed to connect|connection|timed out|getaddrinfo|php_network|wrong version number|unknown protocol|ssl/i', $all)) {
         return 'Could not reach the mail server. Check the server name, port and security setting.';
     }
-    $said = clean_text($msg, 200);
+    if (preg_match('/recipients failed:\s*\S+:\s*(.*)$/s', $msg, $m)) {
+        $msg = $m[1]; // keep the reason, not the address it was about
+    }
+    $said = preg_replace('/[^\s<>"\',;]+@[^\s<>"\',;]+/', 'the address', clean_text($msg, 200)); // addresses never appear in a message
     return $said === '' ? 'The message could not be sent. Please check your email settings and try again.' : 'The mail server said: ' . $said;
 }
