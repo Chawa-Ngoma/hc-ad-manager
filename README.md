@@ -17,6 +17,8 @@ Open http://127.0.0.1:8000/. The first request creates the `data/` folder, `data
 
 - `https://your-site/data/app.sqlite` must return 403 (not the file).
 - On Linux, `data/secret.key` must have permission 600: `ls -l data/secret.key` should show `-rw-------`.
+- If the site is not on HTTPS (and the address is not localhost), a red notice on the sign-in card and at the top of the app says so. Turn HTTPS on and it goes away.
+- If something unexpected breaks on the server, the owner sees one short sentence, never a stack trace; the details (the error class, file and line, never a password or an address) go to the PHP error log.
 
 Setup and deployment instructions will be added here.
 

@@ -63,7 +63,7 @@
     if (!valid && !bad && !repeated) {
       text = 'No addresses yet. You can send to ' + limit + ' customers at a time.';
     } else {
-      text = valid + ' of ' + limit + ' customers';
+      text = valid > limit ? valid + ' customers, limit ' + limit : valid + ' of ' + limit + ' customers';
       if (bad) text += ', ' + bad + ' to check';
       if (repeated) text += ', ' + repeated + ' repeated';
       if (valid > limit) text += '. Too many: please remove ' + (valid - limit) + '.';
@@ -71,6 +71,13 @@
     out.textContent = text;
     out.className = valid > limit ? 'count over' : 'count';
     return { valid: valid, bad: bad, limit: limit };
+  }
+
+  // Near the end of the 5000 characters the box says how many are used.
+  function countMessage() {
+    var n = message.value.length, out = $('send-message-count');
+    out.hidden = n < MESSAGE_MAX * 0.9;
+    out.textContent = n + ' of ' + MESSAGE_MAX + ' characters';
   }
 
   // ---- the preview: the server renders the real email; we show it in a sandboxed frame without scripts
@@ -201,7 +208,8 @@
     $('send-result').className = 'panel ' + (clean ? 'good' : 'problems');
     $('send-result-title').textContent = clean ? 'Sent' : 'Sent with problems';
     $('send-result-counts').textContent = job.sent + ' of ' + job.total + ' sent.' +
-      (bad ? ' ' + bad + ' did not go out.' : '') + (unsure ? ' ' + unsure + ' may or may not have received it.' : '');
+      (bad ? ' ' + bad + ' did not go out.' : '') + (unsure ? ' ' + unsure + ' may or may not have received it.' : '') +
+      (job.ignored ? ' ' + job.ignored + (job.ignored === 1 ? ' address was' : ' addresses were') + ' not valid and left out.' : '');
     fillList('send-failed', job.failed.map(function (f) { return f.to + ': ' + f.err; }));
     fillList('send-unconfirmed', job.unconfirmed.map(function (u) { return u.to; }));
     $('send-cc-note').hidden = !copy;
@@ -262,7 +270,7 @@
       showProblem(err.status === 401 ? 'You were signed out. Nothing was sent.' : err.message + ' Nothing was sent.', err.status === 401 ? 'signin' : 'back');
       return;
     }
-    job = { id: prep.id, total: prep.total, next: 0, sent: 0, failed: [], unconfirmed: [] };
+    job = { id: prep.id, total: prep.total, ignored: prep.ignored || 0, next: 0, sent: 0, failed: [], unconfirmed: [] };
     runChunks();
   }
 
@@ -306,6 +314,7 @@
   subject.addEventListener('input', function () { subjectEdited = true; hint.hidden = true; closeSummary(); });
   message.addEventListener('input', function () {
     try { localStorage.setItem(MESSAGE_KEY, message.value); } catch (e) { /* storage is optional */ }
+    countMessage();
     closeSummary();
     schedulePreview();
   });
@@ -338,5 +347,6 @@
   showSettings();
   autoSubject();
   checkAddresses();
+  countMessage();
   renderLog(window.APP.log || []);
 })();

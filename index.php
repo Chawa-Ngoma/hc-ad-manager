@@ -61,6 +61,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !authed()) {
 
 $setup = kget('pass_hash') === null;
 
+// The owner is told when the site is not on HTTPS (this machine, for testing, is exempt).
+$plain = (empty($_SERVER['HTTPS']) || $_SERVER['HTTPS'] === 'off') && !in_array($_SERVER['SERVER_NAME'] ?? '', ['localhost', '127.0.0.1', '::1'], true);
+$plainNote = 'This page is not using HTTPS, so your password and emails are not protected on their way. Ask whoever looks after the server to turn HTTPS on.';
+
 $title = 'Ad Manager'; // the sign-in card and the page title never read the settings
 $icon = [
     'ad' => '<rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h4"/>',
@@ -90,6 +94,9 @@ $icon = [
 <?php if ($error !== ''): ?>
 <div class="notice" role="alert"><?= h($error) ?></div>
 <?php endif; ?>
+<?php if ($plain): ?>
+<div class="notice" id="https-note"><?= h($plainNote) ?></div>
+<?php endif; ?>
 <form method="post" action="index.php">
 <input type="hidden" name="csrf" value="<?= h(csrf()) ?>">
 <label class="field">Password
@@ -111,6 +118,9 @@ $icon = [
 <div class="brand"><?= h(business_name()) ?></div>
 <button type="button" class="btn" id="signout">Sign out</button>
 </header>
+<?php if ($plain): ?>
+<div class="notice" id="https-note"><?= h($plainNote) ?></div>
+<?php endif; ?>
 
 <section class="tab" id="tab-ad" aria-labelledby="t-ad">
 <div class="seg" role="group" aria-label="What to show">
@@ -208,15 +218,16 @@ $icon = [
 <input type="text" id="send-subject" maxlength="300" autocomplete="off">
 </label>
 <label class="field">Message
-<textarea id="send-message" rows="7" maxlength="5000"></textarea>
+<textarea id="send-message" rows="7" maxlength="5000" aria-describedby="send-message-count"></textarea>
 </label>
+<p class="hint" id="send-message-count" hidden></p>
 <label class="check"><input type="checkbox" id="send-details" checked><span>Show venue, time and date in the email</span></label>
 <label class="check"><input type="checkbox" id="send-image" checked><span>Attach the flyer picture</span></label>
 </div>
 </div>
 <div class="sendcol">
 <h2>What customers will see</h2>
-<iframe id="send-preview" class="mailframe" title="What customers will see" sandbox="allow-same-origin"></iframe>
+<iframe id="send-preview" class="mailframe" title="What customers will see" sandbox="allow-same-origin" tabindex="-1"></iframe>
 <p class="hint" id="send-preview-note" role="alert" hidden></p>
 <button type="button" class="btn primary block" id="send-review">Review and send</button>
 <p class="hint" id="send-hint" role="status" hidden></p>

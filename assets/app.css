@@ -38,6 +38,7 @@ input[type=date], input[type=time], textarea, select {
   background: var(--field); border: 1.5px solid var(--line); border-radius: 12px; font-weight: 400;
 }
 input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+::placeholder { color: var(--muted); opacity: 1; } /* the browsers' own grey is too faint on the dark field */
 /* Date and time: native pickers in the app colour; no extra padding, so the 48px minimum height decides the height. */
 input[type=date], input[type=time] { accent-color: var(--accent); padding-block: 0; }
 .btn {
@@ -124,7 +125,7 @@ textarea { resize: vertical; line-height: 1.45; }
 .previewcol { display: flex; flex-direction: column; gap: 14px; }
 .previewcol .btn { max-width: 440px; margin-inline: auto; }
 .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; background: var(--accent-soft); border-radius: 14px; }
-.seg button { min-height: 44px; border: 0; border-radius: 11px; background: none; color: var(--muted); font-weight: 600; cursor: pointer; }
+.seg button { min-height: 44px; border: 0; border-radius: 11px; background: none; color: var(--accent-text); font-weight: 600; cursor: pointer; }
 .seg button[aria-pressed=true] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
 #tab-ad:not([hidden]), #tab-send:not([hidden]) { display: flex; flex-direction: column; gap: 18px; }
 @media (max-width: 899px) {

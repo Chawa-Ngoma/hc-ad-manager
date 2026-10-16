@@ -10,8 +10,31 @@ if (!defined('APP_DATA_DIR')) {
     define('APP_DATA_DIR', __DIR__ . '/data');
 }
 
+// Anything that was not handled on purpose ends here: one short line in the PHP error log (never the exception's
+// message, which can hold paths or SQL) and a plain sentence for the owner instead of a stack trace.
+function unexpected_error(Throwable $e): void
+{
+    error_log('Ad Manager: unexpected error (' . get_class($e) . ' in ' . basename($e->getFile()) . ':' . $e->getLine() . ').');
+    $text = 'Something went wrong on the server. Please try again. If it keeps happening, ask whoever looks after the server to check the PHP error log.';
+    if (headers_sent()) {
+        return;
+    }
+    http_response_code(500);
+    if (basename($_SERVER['SCRIPT_NAME'] ?? '') === 'api.php') {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => $text]);
+    } else {
+        header('Content-Type: text/plain; charset=utf-8');
+        echo $text;
+    }
+}
+
 function boot(): void
 {
+    set_exception_handler('unexpected_error');
+    header('X-Frame-Options: DENY');
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: same-origin');
     date_default_timezone_set('Africa/Johannesburg');
 
     foreach (['pdo_sqlite', 'openssl'] as $ext) {
@@ -52,10 +75,6 @@ function boot(): void
     // Create the database and key on the first request.
     db();
     secret();
-
-    header('X-Frame-Options: DENY');
-    header('X-Content-Type-Options: nosniff');
-    header('Referrer-Policy: same-origin');
 }
 
 function authed(): bool
