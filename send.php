@@ -1,5 +1,5 @@
 <?php
-// Batch sending. send_prepare() stores one send as a state file (plus the flyer picture) in data/outbox;
+// Batch sending. send_prepare() stores one send as a state file (plus the flyer picture and PDF) in data/outbox;
 // send_chunk() sends the next few messages and saves its progress around every single recipient.
 // Recipient addresses live only in that state file until the send finishes or 24 hours pass. They are never
 // logged, and a response carries them only in the list of problems for that send.
@@ -17,6 +17,7 @@ const SEND_HUNG = 9;             // a recipient that failed after waiting this l
 const SEND_SLOW = 12;            // a recipient that took longer than this ends the chunk, even when it went out
 const SEND_PAUSE_US = 150000;    // pause between messages
 const SEND_PNG_MAX = 6291456;    // 6 MB
+const SEND_PDF_MAX = 6291456;    // 6 MB
 const SEND_KEEP = 86400;         // seconds a state file may live
 const SEND_COPY_MAX = 5;         // addresses that may get "Your copy"
 
@@ -47,7 +48,7 @@ function send_save(string $id, array $state): void
 
 function send_clear(string $id): void
 {
-    foreach (['json', 'png', 'tmp'] as $ext) {
+    foreach (['json', 'png', 'pdf', 'tmp'] as $ext) {
         @unlink(send_path($id, $ext));
     }
 }
@@ -68,30 +69,46 @@ function send_cut(string $text, int $max): string
     return $m[0] ?? '';
 }
 
-// The uploaded flyer as [error message, bytes].
-function send_read_png(?array $file): array
+// An uploaded flyer file as [error message, bytes]. $what is how the messages call it ("flyer picture"), $switch the
+// label of its switch, $max the size limit and $check returns the message for content that is not what it claims, or ''.
+function send_read_upload(?array $file, string $what, string $switch, int $max, callable $check): array
 {
     if ($file === null) {
-        return ['The flyer picture did not arrive. Please try again, or turn off "Attach the flyer picture".', ''];
+        return ['The ' . $what . ' did not arrive. Please try again, or turn off "' . $switch . '".', ''];
     }
     $code = $file['error'] ?? UPLOAD_ERR_NO_FILE;
     if ($code === UPLOAD_ERR_INI_SIZE || $code === UPLOAD_ERR_FORM_SIZE) {
-        return ['The flyer picture is bigger than this server allows (PHP refused the upload). Send without the picture, or ask whoever looks after the server to raise its upload limit.', ''];
+        return ['The ' . $what . ' is bigger than this server allows (PHP refused the upload). Send without it, or ask whoever looks after the server to raise its upload limit.', ''];
     }
     if ($code !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'] ?? '')) {
-        return ['The flyer picture could not be uploaded. Please try again.', ''];
+        return ['The ' . $what . ' could not be uploaded. Please try again.', ''];
     }
-    if (filesize($file['tmp_name']) > SEND_PNG_MAX) {
-        return ['The flyer picture is too big. The limit is 6 MB.', ''];
+    if (filesize($file['tmp_name']) > $max) {
+        return ['The ' . $what . ' is too big. The limit is ' . intdiv($max, 1048576) . ' MB.', ''];
     }
     $bytes = file_get_contents($file['tmp_name']);
-    if ($bytes === false || strncmp($bytes, "\x89PNG\r\n\x1a\n", 8) !== 0) {
-        return ['That file is not a PNG picture.', ''];
-    }
-    return ['', $bytes];
+    $why = $bytes === false ? 'The ' . $what . ' could not be read. Please try again.' : $check($bytes);
+    return $why === '' ? ['', $bytes] : [$why, ''];
 }
 
-function send_prepare(array $in, ?array $file): array
+function send_read_png(?array $file): array
+{
+    return send_read_upload($file, 'flyer picture', 'Attach the flyer picture', SEND_PNG_MAX,
+        fn($b) => strncmp($b, "\x89PNG\r\n\x1a\n", 8) === 0 ? '' : 'That file is not a PNG picture.');
+}
+
+// Judged by content, never by the name or type the browser gave: it must start with %PDF- and end with %%EOF.
+function send_read_pdf(?array $file): array
+{
+    return send_read_upload($file, 'flyer PDF', 'Attach the flyer as a PDF', SEND_PDF_MAX, function ($b) {
+        if (strncmp($b, '%PDF-', 5) !== 0) {
+            return 'That file is not a PDF.';
+        }
+        return str_ends_with(rtrim($b, " \t\r\n\0"), '%%EOF') ? '' : 'That PDF is incomplete (it was cut short). Please try again.';
+    });
+}
+
+function send_prepare(array $in, ?array $file, ?array $pdfFile = null): array
 {
     send_purge();
     db()->prepare("DELETE FROM kv WHERE k LIKE 'sent\\_%' ESCAPE '\\' AND CAST(v AS INTEGER) < ?")->execute([time() - 2 * SEND_KEEP]);
@@ -131,9 +148,22 @@ function send_prepare(array $in, ?array $file): array
         }
     }
 
+    $pdf = ($in['pdf'] ?? false) === true; // off unless asked for
+    $pdfBytes = '';
+    if ($pdf) {
+        [$error, $pdfBytes] = send_read_pdf($pdfFile);
+        if ($error !== '') {
+            return [422, ['error' => $error]];
+        }
+    }
+
     $id = bin2hex(random_bytes(8));
     if ($image && file_put_contents(send_path($id, 'png'), $png) === false) {
         return [500, ['error' => 'The server could not store the flyer picture. Please try again.']];
+    }
+    if ($pdf && file_put_contents(send_path($id, 'pdf'), $pdfBytes) === false) {
+        send_clear($id);
+        return [500, ['error' => 'The server could not store the flyer PDF. Please try again.']];
     }
     send_save($id, [
         'ad' => get_ad(), // the saved copy, never what the browser says
@@ -141,6 +171,7 @@ function send_prepare(array $in, ?array $file): array
         'msg' => send_cut(is_string($in['msg'] ?? '') ? $in['msg'] : '', EMAIL_MESSAGE_MAX),
         'details' => ($in['details'] ?? true) !== false,
         'image' => $image,
+        'pdf' => $pdf,
         'to' => $to,
         'cc' => $cc,
         'next' => 0,
@@ -151,7 +182,7 @@ function send_prepare(array $in, ?array $file): array
         'cc_state' => null,
         'created' => time(),
     ]);
-    return [200, ['id' => $id, 'total' => count($to), 'image' => $image, 'ignored' => count($rawTo) - count($to)]];
+    return [200, ['id' => $id, 'total' => count($to), 'image' => $image, 'pdf' => $pdf, 'ignored' => count($rawTo) - count($to)]];
 }
 
 function send_view(array $state): array
@@ -182,7 +213,7 @@ function send_connect(array $s): array
 }
 
 // The single "Your copy" message to the CC addresses. Returns null (no copy wanted) or its own result.
-function send_copy(string $id, array &$state, array $s, ?string $png): ?array
+function send_copy(string $id, array &$state, array $s, ?string $png, ?string $pdf): ?array
 {
     if (!$state['cc']) {
         return null;
@@ -205,9 +236,9 @@ function send_copy(string $id, array &$state, array $s, ?string $png): ?array
     try {
         mail_send_one(
             $m, $s, $state['cc'], $state['subject'],
-            email_html($state['ad'], business_name(), $msg, $state['details'], $state['image']),
-            email_text($state['ad'], business_name(), $msg, $state['details'], $state['image']),
-            $png
+            email_html($state['ad'], business_name(), $msg, $state['details'], $state['image'], $state['pdf'] ?? false),
+            email_text($state['ad'], business_name(), $msg, $state['details'], $state['image'], $state['pdf'] ?? false),
+            $png, $pdf
         );
         $m->smtpClose();
         return ['ok' => true];
@@ -297,8 +328,15 @@ function send_run(string $id, float $start): array
             return [500, ['error' => 'The flyer picture for this send is missing. Please start the send again.']];
         }
     }
-    $html = email_html($state['ad'], business_name(), $state['msg'], $state['details'], $state['image']);
-    $text = email_text($state['ad'], business_name(), $state['msg'], $state['details'], $state['image']);
+    $pdf = null;
+    if ($state['pdf'] ?? false) {
+        $pdf = @file_get_contents(send_path($id, 'pdf'));
+        if ($pdf === false) {
+            return [500, ['error' => 'The flyer PDF for this send is missing. Please start the send again.']];
+        }
+    }
+    $html = email_html($state['ad'], business_name(), $state['msg'], $state['details'], $state['image'], $state['pdf'] ?? false);
+    $text = email_text($state['ad'], business_name(), $state['msg'], $state['details'], $state['image'], $state['pdf'] ?? false);
 
     $m = null;
     $handled = 0;
@@ -320,7 +358,7 @@ function send_run(string $id, float $start): array
         $began = microtime(true);
         $error = null;
         try {
-            mail_send_one($m, $s, $to, $state['subject'], $html, $text, $png);
+            mail_send_one($m, $s, $to, $state['subject'], $html, $text, $png, $pdf);
         } catch (\PHPMailer\PHPMailer\Exception $e) {
             $error = $e;
         }
@@ -375,7 +413,7 @@ function send_run(string $id, float $start): array
         return [200, ['done' => false] + send_view($state)];
     }
 
-    $copy = send_copy($id, $state, $s, $png);
+    $copy = send_copy($id, $state, $s, $png, $pdf);
     $body = ['done' => true] + send_view($state) + ['cc' => $copy, 'log' => recent_sends()];
     send_clear($id);
     return [200, $body];

@@ -58,6 +58,12 @@ function email_contacts(array $ad): array
     return $out;
 }
 
+// The sentence that says what is attached; the preview and the sent email both use it.
+function email_attached(bool $picture, bool $pdf): string
+{
+    return 'The flyer is attached to this email as ' . ($picture && $pdf ? 'a picture and as a PDF' : ($pdf ? 'a PDF' : 'a picture')) . '.';
+}
+
 // The optional second footer line, from APP_CREDIT in config.php. One line of at most 100 characters: control
 // characters and line breaks are gone. The HTML escapes it; the text part shows it as typed. '' when not set.
 function email_credit(): string
@@ -66,7 +72,7 @@ function email_credit(): string
 }
 
 // $ad must come from clean_ad(). Table layout, 600 px wide, inline styles only, light colours in every mail app.
-function email_html(array $ad, string $businessName, string $message, bool $showDetails, bool $hasImage): string
+function email_html(array $ad, string $businessName, string $message, bool $showDetails, bool $hasImage, bool $hasPdf = false): string
 {
     $label = 'font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#8a2f28;font-weight:bold;padding:4px 14px 4px 0;vertical-align:top';
     $body = '';
@@ -95,8 +101,8 @@ function email_html(array $ad, string $businessName, string $message, bool $show
     if ($lines) {
         $body .= '<p style="margin:0 0 14px;font-size:15px">' . implode('<br>', $lines) . '</p>';
     }
-    if ($hasImage) {
-        $body .= '<p style="margin:0;font-size:13px;color:#6d5b57;background-color:#f3e8e4;border-radius:8px;padding:8px 12px">The flyer is attached to this email as a picture.</p>';
+    if ($hasImage || $hasPdf) {
+        $body .= '<p style="margin:0;font-size:13px;color:#6d5b57;background-color:#f3e8e4;border-radius:8px;padding:8px 12px">' . email_attached($hasImage, $hasPdf) . '</p>';
     }
 
     return '<!DOCTYPE html>' . "\n"
@@ -117,7 +123,7 @@ function email_html(array $ad, string $businessName, string $message, bool $show
 
 // The same content as plain text. Single-line values lose control characters; nothing is escaped because
 // plain text has no markup, so a tag typed by a person simply stays as typed text.
-function email_text(array $ad, string $businessName, string $message, bool $showDetails, bool $hasImage): string
+function email_text(array $ad, string $businessName, string $message, bool $showDetails, bool $hasImage, bool $hasPdf = false): string
 {
     $one = fn($v) => clean_text((string) $v, 500);
     $out = [$one($businessName), $one($ad['title']), ''];
@@ -137,8 +143,8 @@ function email_text(array $ad, string $businessName, string $message, bool $show
     if ($contacts) {
         $out[] = '';
     }
-    if ($hasImage) {
-        array_push($out, 'The flyer is attached to this email as a picture.', '');
+    if ($hasImage || $hasPdf) {
+        array_push($out, email_attached($hasImage, $hasPdf), '');
     }
     $out[] = 'Sent by ' . $one($businessName);
     if (email_credit() !== '') {

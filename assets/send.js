@@ -13,7 +13,7 @@
 
   var tab = $('tab-send');
   var to = $('send-to'), cc = $('send-cc'), subject = $('send-subject'), message = $('send-message');
-  var details = $('send-details'), image = $('send-image'), frame = $('send-preview');
+  var details = $('send-details'), image = $('send-image'), pdf = $('send-pdf'), frame = $('send-preview');
   var review = $('send-review'), hint = $('send-hint'), summary = $('send-summary');
   var ad = window.APP.ad;
   var ccTouched = false, subjectEdited = false, previewStale = true, previewSeq = 0, previewTimer;
@@ -92,7 +92,7 @@
     var seq = ++previewSeq, note = $('send-preview-note');
     previewStale = false;
     try {
-      var res = await window.api('preview', { ad: ad, msg: message.value, details: details.checked, image: image.checked });
+      var res = await window.api('preview', { ad: ad, msg: message.value, details: details.checked, image: image.checked, pdf: pdf.checked });
       if (seq !== previewSeq) return; // a newer request is on its way
       frame.srcdoc = res.html;
       note.hidden = true;
@@ -142,6 +142,7 @@
     $('sum-cc').textContent = cc.value.trim() || 'None';
     $('sum-subject').textContent = one(subject.value);
     $('sum-image').textContent = image.checked ? 'Attached' : 'Not attached';
+    $('sum-pdf').textContent = pdf.checked ? 'Attached' : 'Not attached';
     showPanel('summary');
   });
   $('send-back').addEventListener('click', closeSummary);
@@ -262,10 +263,16 @@
       png = await window.flyerPng();
       if (!png) { showProblem('The flyer picture could not be made. Nothing was sent. Please try again.', 'back'); return; }
     }
+    var pdfFile = null;
+    if (pdf.checked) {
+      setProgress(0, 0, 'Getting the flyer PDF ready…');
+      pdfFile = await window.flyerPdf();
+      if (!pdfFile) { showProblem('The flyer PDF could not be made. Nothing was sent. Please try again.', 'back'); return; }
+    }
     setProgress(0, 0, 'Getting ready…');
     var prep;
     try { // not repeated automatically: a person decides whether to try again
-      prep = await window.api('send_prepare', { to: tokens(to), cc: tokens(cc), subject: one(subject.value), msg: message.value, details: details.checked, image: image.checked }, png, true);
+      prep = await window.api('send_prepare', { to: tokens(to), cc: tokens(cc), subject: one(subject.value), msg: message.value, details: details.checked, image: image.checked, pdf: pdf.checked }, png, true, pdfFile);
     } catch (err) {
       showProblem(err.status === 401 ? 'You were signed out. Nothing was sent.' : err.message + ' Nothing was sent.', err.status === 401 ? 'signin' : 'back');
       return;
@@ -318,7 +325,7 @@
     closeSummary();
     schedulePreview();
   });
-  [details, image].forEach(function (box) { box.addEventListener('change', function () { closeSummary(); schedulePreview(); }); });
+  [details, image, pdf].forEach(function (box) { box.addEventListener('change', function () { closeSummary(); schedulePreview(); }); });
 
   document.addEventListener('flyer-changed', function (e) {
     ad = e.detail;

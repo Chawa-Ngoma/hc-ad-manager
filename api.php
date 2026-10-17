@@ -12,7 +12,7 @@ require_api_auth();
 
 // A request bigger than PHP's post_max_size arrives with no fields at all.
 if (!isset($_POST['action']) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
-    json_out(['error' => 'That was too big for this server to accept. Please try again without the flyer picture.'], 422);
+    json_out(['error' => 'That was too big for this server to accept. Please try again without the flyer picture or PDF.'], 422);
 }
 
 switch ($_POST['action'] ?? '') {
@@ -109,7 +109,7 @@ switch ($_POST['action'] ?? '') {
         }
         require_once __DIR__ . '/email.php';
         $msg = is_string($in['msg'] ?? '') ? ($in['msg'] ?? '') : '';
-        json_out(['html' => email_html(clean_ad($in['ad']), business_name(), $msg, ($in['details'] ?? true) !== false, ($in['image'] ?? true) !== false)]);
+        json_out(['html' => email_html(clean_ad($in['ad']), business_name(), $msg, ($in['details'] ?? true) !== false, ($in['image'] ?? true) !== false, ($in['pdf'] ?? false) === true)]);
     case 'send_prepare':
     case 'send_chunk':
         require_once __DIR__ . '/send.php';
@@ -118,7 +118,7 @@ switch ($_POST['action'] ?? '') {
             json_out(['error' => 'The send could not be read. Please try again.'], 422);
         }
         [$code, $body] = $_POST['action'] === 'send_prepare'
-            ? send_prepare($in, $_FILES['flyer'] ?? null)
+            ? send_prepare($in, $_FILES['flyer'] ?? null, $_FILES['pdf'] ?? null)
             : send_chunk(is_string($in['id'] ?? null) ? $in['id'] : '');
         json_out($body, $code);
     default:

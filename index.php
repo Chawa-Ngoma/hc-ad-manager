@@ -268,7 +268,7 @@ $icon = [
 </div>
 <p class="state" id="ad-state" role="status"></p>
 </form>
-<div class="previewcol"><canvas id="flyer" class="flyer" width="1200" height="1800" role="img" aria-label="Preview of the flyer"></canvas><button type="button" class="btn primary block" id="save-flyer">Save flyer picture</button></div>
+<div class="previewcol"><canvas id="flyer" class="flyer" width="1200" height="1800" role="img" aria-label="Preview of the flyer"></canvas><div class="row"><button type="button" class="btn primary" id="save-flyer">Save flyer picture</button><button type="button" class="btn" id="save-flyer-pdf">Save flyer as PDF</button></div></div>
 </div>
 </section>
 
@@ -299,6 +299,7 @@ $icon = [
 <p class="hint" id="send-message-count" hidden></p>
 <label class="check"><input type="checkbox" id="send-details" checked><span>Show venue, time and date in the email</span></label>
 <label class="check"><input type="checkbox" id="send-image" checked><span>Attach the flyer picture</span></label>
+<label class="check"><input type="checkbox" id="send-pdf"><span>Attach the flyer as a PDF</span></label>
 </div>
 </div>
 <div class="sendcol">
@@ -315,6 +316,7 @@ $icon = [
 <dt>CC</dt><dd id="sum-cc"></dd>
 <dt>Subject</dt><dd id="sum-subject"></dd>
 <dt>Picture</dt><dd id="sum-image"></dd>
+<dt>PDF</dt><dd id="sum-pdf"></dd>
 </dl>
 <div class="row">
 <button type="button" class="btn" id="send-back">Go back</button>

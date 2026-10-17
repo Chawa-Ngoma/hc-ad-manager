@@ -51,7 +51,7 @@ function mail_open(array $s): PHPMailer
 }
 
 // Sends one message to one address (or, for a copy, to a short list of them). $png is the raw bytes of a PNG to attach, or null.
-function mail_send_one(PHPMailer $m, array $s, string|array $to, string $subject, string $html, string $text, ?string $png = null): void
+function mail_send_one(PHPMailer $m, array $s, string|array $to, string $subject, string $html, string $text, ?string $png = null, ?string $pdf = null): void
 {
     $m->clearAllRecipients();
     $m->clearReplyTos();
@@ -69,6 +69,9 @@ function mail_send_one(PHPMailer $m, array $s, string|array $to, string $subject
     $m->AltBody = $text;
     if ($png !== null) {
         $m->addStringAttachment($png, 'Flyer.png', PHPMailer::ENCODING_BASE64, 'image/png');
+    }
+    if ($pdf !== null) {
+        $m->addStringAttachment($pdf, 'Flyer.pdf', PHPMailer::ENCODING_BASE64, 'application/pdf'); // the name is ours, never the browser's
     }
     $m->send();
 }

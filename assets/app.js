@@ -14,11 +14,12 @@
 
   // Posts one action to api.php and resolves with the parsed JSON.
   // Rejects with an Error whose message is safe to show to the user.
-  async function api(action, data, file, stay) {
+  async function api(action, data, file, stay, pdf) {
     var body = new FormData();
     body.append('action', action);
     body.append('data', JSON.stringify(data || {}));
     if (file) body.append('flyer', file);
+    if (pdf) body.append('pdf', pdf);
 
     var res;
     try {
@@ -183,21 +184,32 @@
     toast('Changes undone.');
   });
 
-  // Save flyer picture: share it where the phone allows, otherwise download Flyer.png. Draws now, from the form, so unsaved edits are in it.
+  // Hands a finished file to the share sheet where the phone allows it, otherwise downloads it under the same name.
+  async function shareOrSave(blob, name, type) {
+    var file = new File([blob], name, { type: type });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: 'Flyer' }); return; }
+      catch (err) { if (err && err.name === 'AbortError') return; }
+    }
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // Save flyer picture. Draws now, from the form, so unsaved edits are in it.
   document.getElementById('save-flyer').addEventListener('click', function () {
     window.drawFlyer(canvas, readForm());
-    canvas.toBlob(async function (blob) {
+    canvas.toBlob(function (blob) {
       if (!blob) { toast('Could not make the picture. Please try again.'); return; }
-      var file = new File([blob], 'Flyer.png', { type: 'image/png' });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        try { await navigator.share({ files: [file], title: 'Flyer' }); return; }
-        catch (err) { if (err && err.name === 'AbortError') return; }
-      }
-      var url = URL.createObjectURL(blob), a = document.createElement('a');
-      a.href = url; a.download = 'Flyer.png';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      shareOrSave(blob, 'Flyer.png', 'image/png');
     }, 'image/png');
+  });
+
+  document.getElementById('save-flyer-pdf').addEventListener('click', async function () {
+    var pdf = await window.flyerPdf();
+    if (!pdf) { toast('Could not make the PDF. Please try again.'); return; }
+    shareOrSave(pdf, 'Flyer.pdf', 'application/pdf');
   });
 
   fillForm(saved);
@@ -213,5 +225,38 @@
       canvas.toBlob(resolve, 'image/png');
     });
   };
+  // The flyer as a one-page A4 PDF, no library: the canvas as a JPEG (quality 0.95, on white, because a JPEG has no
+  // transparency) wrapped in a hand-written PDF, fitted inside a 10 mm margin and centred. It is a picture: no
+  // selectable text and no tappable numbers. Resolves to a Blob, or null.
+  window.flyerPdf = function () {
+    return new Promise(function (resolve) {
+      window.drawFlyer(canvas, readForm());
+      var flat = document.createElement('canvas');
+      flat.width = canvas.width; flat.height = canvas.height;
+      var g = flat.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, flat.width, flat.height); g.drawImage(canvas, 0, 0);
+      flat.toBlob(function (jpg) { resolve(jpg ? pdfPage(jpg, flat.width, flat.height) : null); }, 'image/jpeg', 0.95);
+    });
+  };
+
+  function pdfPage(jpg, w, h) {
+    var PW = 595.28, PH = 841.89, M = 28.35; // A4 in points; 10 mm margin
+    var s = Math.min((PW - 2 * M) / w, (PH - 2 * M) / h), dw = w * s, dh = h * s;
+    var draw = 'q ' + dw.toFixed(2) + ' 0 0 ' + dh.toFixed(2) + ' ' + ((PW - dw) / 2).toFixed(2) + ' ' + ((PH - dh) / 2).toFixed(2) + ' cm /Im0 Do Q';
+    var parts = ['%PDF-1.4\n'], pos = parts[0].length, at = [];
+    function put(n, text) { at[n] = pos; var t = n + ' 0 obj\n' + text + '\nendobj\n'; parts.push(t); pos += t.length; }
+    put(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    put(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    put(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + PW + ' ' + PH + '] /Resources << /XObject << /Im0 5 0 R >> >> /Contents 4 0 R >>');
+    put(4, '<< /Length ' + draw.length + ' >>\nstream\n' + draw + '\nendstream');
+    at[5] = pos; // the picture itself goes in as the Blob, so its bytes are never copied into a string
+    var open = '5 0 obj\n<< /Type /XObject /Subtype /Image /Width ' + w + ' /Height ' + h + ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' + jpg.size + ' >>\nstream\n';
+    var shut = '\nendstream\nendobj\n';
+    parts.push(open, jpg, shut); pos += open.length + jpg.size + shut.length;
+    var xref = 'xref\n0 6\n0000000000 65535 f \n';
+    for (var n = 1; n <= 5; n++) xref += ('0000000000' + at[n]).slice(-10) + ' 00000 n \n';
+    parts.push(xref + 'trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n' + pos + '\n%%EOF\n');
+    return new Blob(parts, { type: 'application/pdf' });
+  }
   window.toast = toast;
 })();
