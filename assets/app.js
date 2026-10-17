@@ -225,8 +225,8 @@
       canvas.toBlob(resolve, 'image/png');
     });
   };
-  // The flyer as a one-page A4 PDF, no library: the canvas as a JPEG (quality 0.95, on white, because a JPEG has no
-  // transparency) wrapped in a hand-written PDF, fitted inside a 10 mm margin and centred. It is a picture: no
+  // The flyer as a one-page PDF, no library: the canvas as a JPEG (quality 0.95, on white, because a JPEG has no
+  // transparency) wrapped in a hand-written PDF whose page is the flyer's own 2:3 shape (400 x 600), no margin. It is a picture: no
   // selectable text and no tappable numbers. Resolves to a Blob, or null.
   window.flyerPdf = function () {
     return new Promise(function (resolve) {
@@ -240,9 +240,8 @@
   };
 
   function pdfPage(jpg, w, h) {
-    var PW = 595.28, PH = 841.89, M = 28.35; // A4 in points; 10 mm margin
-    var s = Math.min((PW - 2 * M) / w, (PH - 2 * M) / h), dw = w * s, dh = h * s;
-    var draw = 'q ' + dw.toFixed(2) + ' 0 0 ' + dh.toFixed(2) + ' ' + ((PW - dw) / 2).toFixed(2) + ' ' + ((PH - dh) / 2).toFixed(2) + ' cm /Im0 Do Q';
+    var PW = 400, PH = 600; // the flyer's own 2:3 shape, so the picture fills the page edge to edge
+    var draw = 'q ' + PW + ' 0 0 ' + PH + ' 0 0 cm /Im0 Do Q';
     var parts = ['%PDF-1.4\n'], pos = parts[0].length, at = [];
     function put(n, text) { at[n] = pos; var t = n + ' 0 obj\n' + text + '\nendobj\n'; parts.push(t); pos += t.length; }
     put(1, '<< /Type /Catalog /Pages 2 0 R >>');
